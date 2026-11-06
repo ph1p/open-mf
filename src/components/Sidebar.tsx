@@ -74,45 +74,71 @@ function SwitchRow({
   );
 }
 
-/** Front jacks: Hi-Z and 48 V for 1–2, trim and stereo link for 3–4. */
-function Inputs() {
+/** Front jacks: Hi-Z and 48 V for the combo inputs, trim and stereo link for 3–4 (MiniFuse 4). */
+export function Inputs() {
   const mixer = useStore(app, (s) => s.mixer);
+  const device = useStore(app, (s) => s.stat.device);
   const switches = useStore(app, (s) => s.switches);
   const pending = useStore(app, (s) => s.pending);
   const armed = useStore(app, (s) => s.armed);
   useStore(settings, (s) => s.defaults);
+  if (!device) return null;
+
+  const has = (c: Control) => device.controls.includes(c);
+  const combo = device.inputs === 1 ? [0] : [0, 1];
+  const comboLabel = combo.length === 1 ? "Input 1" : "Inputs 1–2";
+  const on = (c: Control) => switches[c] === true;
 
   return (
     <div className="flex flex-col gap-5">
       <section>
         <Intro>The jacks on the MiniFuse. Set gain with the knobs on the device.</Intro>
-        <Sub>Inputs 1–2 · mic and instrument</Sub>
+        <Sub>{`${comboLabel} · mic and instrument`}</Sub>
         <div className="flex flex-col divide-y divide-border">
-          {([0, 1] as const).map((i) => {
+          {combo.map((i) => {
             const id: Control = i === 0 ? "inst1" : "inst2";
             return (
-              <InputTile key={i} ch={i} name={CHANNELS[i]} kind="XLR / ¼″" badge={switches.phantom48v ? "48 V" : undefined}>
-                <SwitchRow
-                  label="Guitar / bass (Hi-Z)"
-                  hint={switches[id] ? "On: for a guitar or bass plugged straight in" : "Off: for mics, keyboards and line-level gear"}
-                  checked={switches[id]}
-                  disabled={pending !== null}
-                  onChange={() => void toggleSwitch(id)}
-                />
+              <InputTile
+                key={i}
+                ch={i}
+                name={CHANNELS[i]}
+                kind="XLR / ¼″"
+                metered={device.mixer}
+                badge={on("phantom48v") ? "48 V" : undefined}
+              >
+                {has(id) && (
+                  <SwitchRow
+                    label="Guitar / bass (Hi-Z)"
+                    hint={on(id) ? "On: for a guitar or bass plugged straight in" : "Off: for mics, keyboards and line-level gear"}
+                    checked={on(id)}
+                    disabled={pending !== null}
+                    onChange={() => void toggleSwitch(id)}
+                  />
+                )}
               </InputTile>
             );
           })}
         </div>
-        <SwitchRow
-          label="48 V phantom power"
-          hint="For condenser mics on inputs 1 and 2"
-          warn
-          checked={switches.phantom48v}
-          armed={armed === "phantom48v"}
-          disabled={pending !== null}
-          onChange={() => void toggleSwitch("phantom48v")}
-        />
-
+        {has("phantom48v") && (
+          <SwitchRow
+            label="48 V phantom power"
+            hint={combo.length === 1 ? "For a condenser mic on input 1" : "For condenser mics on inputs 1 and 2"}
+            warn
+            checked={on("phantom48v")}
+            armed={armed === "phantom48v"}
+            disabled={pending !== null}
+            onChange={() => void toggleSwitch("phantom48v")}
+          />
+        )}
+        {has("monitor") && (
+          <SwitchRow
+            label="Mono direct monitoring"
+            hint="Hear the inputs in mono on the outputs"
+            checked={on("monitor")}
+            disabled={pending !== null}
+            onChange={() => void toggleSwitch("monitor")}
+          />
+        )}
       </section>
 
       {mixer && (

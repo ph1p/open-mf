@@ -44,6 +44,13 @@ pub enum MixerError {
     Usb(#[from] UsbError),
     #[error("value out of range: {0}")]
     Range(&'static str),
+    #[error("this MiniFuse has no software mixer")]
+    NoMixer,
+}
+
+/// Mixer params only exist on the MiniFuse 4. Never send them to another model.
+fn require_mixer() -> Result<(), MixerError> {
+    if crate::device::model()?.has_mixer() { Ok(()) } else { Err(MixerError::NoMixer) }
 }
 
 fn check(ok: bool, what: &'static str) -> Result<(), MixerError> {
@@ -124,6 +131,7 @@ pub struct MixerState {
 }
 
 pub fn read_state() -> Result<MixerState, MixerError> {
+    require_mixer()?;
     let mut buses = Vec::with_capacity(BUSES as usize);
     for bus in 0..BUSES {
         let mut strips = Vec::with_capacity(CHANNELS as usize);
@@ -155,6 +163,7 @@ pub const METERS: usize = CHANNELS as usize + 2 * 3;
 /// Peak levels in dBFS; `None` = silence. Indices 0-9 = channels (analog 1-4, USB 1-6),
 /// then `CHANNELS + 2*bus` / `+1` = bus L/R (Main post-master, Cue 1/2 pre-master).
 pub fn meters() -> Result<Vec<Option<f64>>, MixerError> {
+    require_mixer()?;
     let words = read_meters()?;
     Ok(words[..METERS].iter().map(|&w| (w != 0).then(|| 20.0 * (f64::from(w) / 2_147_483_648.0).log10())).collect())
 }
@@ -201,6 +210,7 @@ pub enum Op {
 }
 
 pub fn apply(op: Op) -> Result<(), MixerError> {
+    require_mixer()?;
     match op {
         Op::Level { bus, ch, level_db, pan } => {
             check_bus_ch(bus, ch)?;

@@ -4,7 +4,8 @@ import { MasterStrip } from "@/components/MasterStrip";
 import { PlusIcon } from "lucide-react";
 import { Hint } from "@/components/Hint";
 import { AddMenu, MixerToolbar } from "@/components/MixerToolbar";
-import { Sidebar } from "@/components/Sidebar";
+import { Inputs, Sidebar } from "@/components/Sidebar";
+import { SystemAudio } from "@/components/SystemAudio";
 import { SidebarToggle, TitleBar } from "@/components/TitleBar";
 import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 import { app, inMix, startApp, unitsOf, type Unit } from "@/lib/app";
@@ -99,6 +100,27 @@ function StripGroup({ title, dot, hint, children }: { title: string; dot: string
   );
 }
 
+/** MiniFuse 1 and 2: no software mixer, so the front-panel switches and system audio fill the window. */
+function PanelView({ name }: { name: string }) {
+  return (
+    <div className="min-h-0 flex-1 overflow-y-auto">
+      <div className="mx-auto grid max-w-3xl gap-4 p-6 md:grid-cols-2">
+        <section className="rounded-xl border bg-card p-4">
+          <h2 className="mb-3 text-[15px] font-semibold">Inputs</h2>
+          <Inputs />
+        </section>
+        <section className="rounded-xl border bg-card p-4">
+          <h2 className="mb-3 text-[15px] font-semibold">Computer</h2>
+          <SystemAudio />
+        </section>
+        <p className="text-[13px] text-muted-foreground md:col-span-2">
+          The {name} has no software mixer. Balance inputs and computer sound with the knobs on the device.
+        </p>
+      </div>
+    </div>
+  );
+}
+
 function Empty({ title, children }: { title: string; children: React.ReactNode }) {
   return (
     <div className="m-auto max-w-md px-6 text-center">
@@ -118,7 +140,8 @@ export default function App() {
     if (wide) setSheetOpen(false);
   }, [wide]);
 
-  const ready = stat.supported && stat.connected && mixer;
+  const device = stat.supported && stat.connected ? stat.device : null;
+  const ready = device?.mixer && mixer;
   const osName = OS === "windows" ? "Windows" : "Linux";
 
   return (
@@ -136,8 +159,10 @@ export default function App() {
             that connection, so the app can't reach the mixer without interrupting your audio. Audio itself works as usual. Today,
             mixer control works on macOS.
           </Empty>
+        ) : device && !device.mixer ? (
+          <PanelView name={device.name} />
         ) : !ready ? (
-          <Empty title="Connect your MiniFuse 4">Plug it in over USB. Open MF picks it up automatically.</Empty>
+          <Empty title="Connect your MiniFuse">Plug in a MiniFuse 1, 2 or 4 over USB. Open MF picks it up automatically.</Empty>
         ) : (
           <>
             <MixerView mixer={mixer} />

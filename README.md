@@ -1,10 +1,21 @@
 # Open MF
 
-A small, fast control panel for the **Arturia MiniFuse 4** audio interface. Built with
+A small, fast control panel for the **Arturia MiniFuse** audio interfaces. Built with
 Tauri 2, React, TypeScript, shadcn/ui and Tailwind 4.
 
 > Open MF is an independent project. It is not affiliated with, endorsed by or supported
 > by Arturia. "MiniFuse" is a trademark of its owner.
+
+## Devices
+
+| Model      | Mixer, meters, presets | Inputs                                  | Status                       |
+| ---------- | ---------------------- | --------------------------------------- | ---------------------------- |
+| MiniFuse 4 | yes                    | Hi-Z 1–2, 48 V, trim and link for 3–4   | tested on hardware           |
+| MiniFuse 2 | no (no DSP mixer)      | Hi-Z 1–2, 48 V, mono direct monitoring  | untested, IDs from mf-cli    |
+| MiniFuse 1 | no (no DSP mixer)      | Hi-Z, 48 V, mono direct monitoring      | untested, IDs from mf-cli    |
+
+MiniFuse 1 and 2 get a simple view with their input switches and computer audio. Their
+switches are write-only as far as known: Open MF shows what it last set.
 
 ## Features
 
@@ -30,7 +41,9 @@ Tauri 2, React, TypeScript, shadcn/ui and Tailwind 4.
   also gets its own volume.
 - **Inputs:** Hi-Z (guitar / bass) switches, 48 V phantom power, trim for Inputs 3–4, 3–4 stereo link.
 - **Presets:** built-in setups plus your own, saved locally. Applying one writes only the
-  values that differ.
+  values that differ. Built in: computer only, monitor while recording, mics with
+  speakers, streaming, calls and podcasts (mix-minus Loopback), DAW headphone mix,
+  same on all outputs, everything at 0 dB.
 - **Two-way sync:** changes made in the vendor app show up in Open MF. Polling speeds up
   while the window has focus.
 - Custom title bar, light and dark theme. The window remembers its size and position.
@@ -80,9 +93,13 @@ src-tauri/csrc/audio_mac.c Core Audio shim
 
 ## Protocol notes
 
-Interoperability facts, observed on hardware.
+Interoperability facts, observed on a MiniFuse 4 unless noted.
 
-- USB IDs: vendor `0x1C75`, product `0xAF70`.
+- USB IDs: vendor `0x1C75`; product `0xAF70` (MiniFuse 4). From mf-cli, untested:
+  `0xAF90` (MiniFuse 2), `0xAF80` and `0xAF82` (MiniFuse 1).
+- Switch selectors (`wValue`, payload `[on, 0]`): INST 1 `0x0000`, INST 2 `0x0001`;
+  48 V `0x0300` on MiniFuse 4, `0x0400` on 1 and 2; mono direct monitoring `0x0500`
+  (1 and 2 only).
 - Write: class request to interface 0 (`bmRequestType 0x21`), `bRequest 34`,
   `wValue = (param << 8) | index`, `wIndex 0`, payload u16 little-endian.
 - Read: `bmRequestType 0xA1`, `bRequest 0xA2`, same `wValue`/`wIndex`.
@@ -98,7 +115,7 @@ update (DFU) requests.
 
 ## Credits
 
-The initial INST and 48 V selectors came from
+The INST, 48 V and direct-monitoring selectors and the MiniFuse 1 and 2 product IDs came from
 [mf-cli](https://github.com/nolight132/mf-cli) (MIT).
 
 ## License

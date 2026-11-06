@@ -1,9 +1,20 @@
 import { invoke } from "@tauri-apps/api/core";
 
-export type Control = "inst1" | "inst2" | "phantom48v";
-export type Switches = Record<Control, boolean>;
+export type Control = "inst1" | "inst2" | "phantom48v" | "monitor";
+/** Controls the device could not report are missing. */
+export type Switches = Partial<Record<Control, boolean>>;
+/** The attached model and what it can do. */
+export type DeviceInfo = {
+  name: string;
+  /** Mic / instrument inputs on the front. */
+  inputs: number;
+  /** Internal mixer, routing and meters (MiniFuse 4 only). */
+  mixer: boolean;
+  controls: Control[];
+};
 export type Status = {
   connected: boolean;
+  device: DeviceInfo | null;
   clockSelector: number | null;
   sampleRate: number | null;
   switches: Switches | null;

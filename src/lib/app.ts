@@ -32,8 +32,8 @@ export type AppState = {
 };
 
 export const app = createStore<AppState>({
-  stat: { supported: true, connected: false, clockSelector: null, sampleRate: null, switches: null, error: null },
-  switches: { inst1: false, inst2: false, phantom48v: false },
+  stat: { supported: true, connected: false, device: null, clockSelector: null, sampleRate: null, switches: null, error: null },
+  switches: {},
   pending: null,
   armed: null,
   mixer: null,
@@ -641,11 +641,15 @@ async function refresh() {
   // Device state wins, so front-panel presses show up here. Skip while a write is in flight,
   // and briefly after a write: the device reports the new value only after a short delay.
   const stale = s.pending !== null || started < switchWriteAt + 1500;
-  patch(stat.switches && !stale ? { stat, switches: stat.switches } : { stat });
+  patch(stat.switches && !stale ? { stat, switches: { ...s.switches, ...stat.switches } } : { stat });
 }
 
 async function refreshMixer() {
   // Device state wins, except right after a local edit (avoids fader jitter).
+  if (!app.get().stat.device?.mixer) {
+    if (app.get().mixer) patch({ mixer: null });
+    return;
+  }
   if (dragging || app.get().applying || sender.msSinceWrite() < 1500) return;
   try {
     const m = await invoke<Mixer>("mixer_state");
@@ -708,7 +712,9 @@ export function startApp() {
     clearTimeout(t);
     if (busy) return;
     busy = true;
-    await Promise.all([refresh(), refreshMixer()]).catch(() => {});
+    // Status first: it says whether this model has a mixer to read.
+    await refresh().catch(() => {});
+    await refreshMixer().catch(() => {});
     busy = false;
     if (alive) t = setTimeout(poll, document.hasFocus() ? 300 : 1500);
   }
@@ -717,7 +723,7 @@ export function startApp() {
   let meterBusy = false;
   const mt = setInterval(async () => {
     const { stat } = app.get();
-    if (!stat.supported || !stat.connected || meterBusy) return;
+    if (!stat.device?.mixer || meterBusy) return;
     meterBusy = true;
     try {
       meters.set(await invoke<(number | null)[]>("mixer_meters"));

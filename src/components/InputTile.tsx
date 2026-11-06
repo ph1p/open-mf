@@ -12,6 +12,7 @@ export function InputTile({
   name,
   kind,
   badge,
+  metered = true,
   children,
 }: {
   ch: number;
@@ -20,6 +21,8 @@ export function InputTile({
   kind: string;
   /** Small warning chip next to the name (e.g. "48 V"). */
   badge?: string;
+  /** False on models without meters: only the name and controls show. */
+  metered?: boolean;
   children?: ReactNode;
 }) {
   const db = useMeter((v) => v[ch]);
@@ -54,45 +57,49 @@ export function InputTile({
         <span className="text-[14px] font-semibold">{name}</span>
         <span className="text-[12px] text-muted-foreground">{kind}</span>
         {badge && <span className="rounded bg-warn/15 px-1 text-[11px] font-semibold text-warn">{badge}</span>}
-        {/* Fixed slot that fades in: a text line here made the sidebar jump. */}
-        <Hint
-          text={
-            ch < 2
-              ? `No signal. Plug in, then turn up the ${name} gain knob on the MiniFuse.`
-              : "No signal. Check what is plugged into this jack."
-          }
-        >
-          <span
-            role="img"
-            aria-label={`${name}: no signal`}
-            aria-hidden={!idle}
-            tabIndex={idle ? 0 : -1}
-            className={cn(
-              "ml-auto grid size-4 place-items-center rounded text-warn/80 transition-opacity duration-300 outline-none focus-visible:ring-2 focus-visible:ring-ring",
-              idle ? "opacity-100" : "pointer-events-none opacity-0",
-            )}
-          >
-            <UnplugIcon className="size-3.5" />
-          </span>
-        </Hint>
-        <output aria-label={`${name} level`} className={cn(" text-[12px] tabular-nums", db == null && "text-muted-foreground")}>
-          {db == null || db < -60 ? "−∞" : db.toFixed(1).replace("-", "−")}&nbsp;<span className="text-muted-foreground">dB</span>
-        </output>
-        <Hint text={clipped ? "Clipped. Turn the gain down, then click to reset" : "Lights up when the input overloads. Hold time: Preferences"}>
-          <button
-            type="button"
-            onClick={() => setClipped(false)}
-            aria-label={clipped ? `${name} clipped, reset` : `${name} clip light`}
-            className={cn(
-              "rounded px-1 text-[11px] font-bold tracking-wide transition",
-              clipped ? "bg-red-500 text-white" : "text-muted-foreground/70 ring-1 ring-border",
-            )}
-          >
-            CLIP
-          </button>
-        </Hint>
+        {metered && (
+          <>
+            {/* Fixed slot that fades in: a text line here made the sidebar jump. */}
+            <Hint
+              text={
+                ch < 2
+                  ? `No signal. Plug in, then turn up the ${name} gain knob on the MiniFuse.`
+                  : "No signal. Check what is plugged into this jack."
+              }
+            >
+              <span
+                role="img"
+                aria-label={`${name}: no signal`}
+                aria-hidden={!idle}
+                tabIndex={idle ? 0 : -1}
+                className={cn(
+                  "ml-auto grid size-4 place-items-center rounded text-warn/80 transition-opacity duration-300 outline-none focus-visible:ring-2 focus-visible:ring-ring",
+                  idle ? "opacity-100" : "pointer-events-none opacity-0",
+                )}
+              >
+                <UnplugIcon className="size-3.5" />
+              </span>
+            </Hint>
+            <output aria-label={`${name} level`} className={cn(" text-[12px] tabular-nums", db == null && "text-muted-foreground")}>
+              {db == null || db < -60 ? "−∞" : db.toFixed(1).replace("-", "−")}&nbsp;<span className="text-muted-foreground">dB</span>
+            </output>
+            <Hint text={clipped ? "Clipped. Turn the gain down, then click to reset" : "Lights up when the input overloads. Hold time: Preferences"}>
+              <button
+                type="button"
+                onClick={() => setClipped(false)}
+                aria-label={clipped ? `${name} clipped, reset` : `${name} clip light`}
+                className={cn(
+                  "rounded px-1 text-[11px] font-bold tracking-wide transition",
+                  clipped ? "bg-red-500 text-white" : "text-muted-foreground/70 ring-1 ring-border",
+                )}
+              >
+                CLIP
+              </button>
+            </Hint>
+          </>
+        )}
       </div>
-      <Meter select={(v) => v[ch]} vertical={false} thick label={`${name} signal`} />
+      {metered && <Meter select={(v) => v[ch]} vertical={false} thick label={`${name} signal`} />}
       {children}
     </div>
   );

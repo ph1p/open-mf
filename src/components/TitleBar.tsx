@@ -36,7 +36,7 @@ function Status() {
       )}
     >
       <span className={cn("pointer-events-none size-1.5 rounded-full", stat.connected ? "bg-primary" : "bg-muted-foreground/40")} />
-      <span className="pointer-events-none">{stat.connected ? "MiniFuse 4" : stat.supported ? "No device" : "Not supported here"}</span>
+      <span className="pointer-events-none">{stat.connected ? (stat.device?.name ?? "MiniFuse") : stat.supported ? "No device" : "Not supported here"}</span>
       {stat.sampleRate && <span className="pointer-events-none text-muted-foreground">{(stat.sampleRate / 1000).toFixed(1)} kHz</span>}
     </span>
   );

@@ -1,6 +1,7 @@
 import { CheckIcon, Volume2Icon, VolumeXIcon } from "lucide-react";
 import { Intro } from "@/components/Sidebar";
 import { Button } from "@/components/ui/button";
+import { app } from "@/lib/app";
 import { OS } from "@/lib/platform";
 import { useStore } from "@/lib/store";
 import {
@@ -8,7 +9,8 @@ import {
 } from "@/lib/sysaudio";
 import { cn } from "@/lib/utils";
 
-const HINT = "How your computer sends sound to the MiniFuse. It arrives in the mixer as USB 1–2.";
+const HINT = "How your computer sends sound to the MiniFuse.";
+const MIXER_HINT = `${HINT} It arrives in the mixer as USB 1–2.`;
 
 /** 0..1 slider with a percent readout. */
 function Level({ value, label, disabled, onChange }: {
@@ -42,6 +44,7 @@ function Note({ children }: { children: string }) {
 export function SystemAudio() {
   useSystemAudio();
   const s = useStore(sysAudio, (v) => v);
+  const mixer = useStore(app, (v) => v.stat.device?.mixer ?? false);
 
   let body;
   if (OS === "windows" || (s && !s.supported)) {
@@ -88,7 +91,11 @@ export function SystemAudio() {
             )}
           </div>
         ) : (
-          <Note>Volume: use the USB 1–2 fader in the mixer, or the monitor knob on the device.</Note>
+          <Note>
+            {mixer
+              ? "Volume: use the USB 1–2 fader in the mixer, or the monitor knob on the device."
+              : "Volume: use the monitor knob on the device."}
+          </Note>
         )}
 
         <div>
@@ -117,7 +124,7 @@ export function SystemAudio() {
 
   return (
     <section>
-      <Intro>{HINT}</Intro>
+      <Intro>{mixer ? MIXER_HINT : HINT}</Intro>
       {body}
     </section>
   );

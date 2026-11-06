@@ -5,6 +5,7 @@ mod usb;
 
 use device::Control;
 use serde::Serialize;
+use std::collections::BTreeMap;
 
 #[derive(Serialize)]
 #[serde(rename_all = "camelCase")]
@@ -12,26 +13,31 @@ struct Status {
     /// False when this OS has no USB control backend yet (only macOS has one).
     supported: bool,
     connected: bool,
+    /// The attached model and what it can do.
+    device: Option<device::DeviceInfo>,
     clock_selector: Option<u8>,
     sample_rate: Option<u32>,
-    switches: Option<Switches>,
+    /// Current switch states the device reported. Controls it could not read are missing.
+    switches: Option<BTreeMap<Control, bool>>,
     error: Option<String>,
 }
 
-#[derive(Serialize)]
-#[serde(rename_all = "camelCase")]
-struct Switches {
-    inst1: bool,
-    inst2: bool,
-    phantom48v: bool,
+impl Status {
+    fn offline(supported: bool, error: Option<String>) -> Self {
+        Status {
+            supported,
+            connected: error.is_some(),
+            device: None,
+            clock_selector: None,
+            sample_rate: None,
+            switches: None,
+            error,
+        }
+    }
 }
 
-fn read_switches() -> Option<Switches> {
-    Some(Switches {
-        inst1: device::get_switch(Control::Inst1).ok()?,
-        inst2: device::get_switch(Control::Inst2).ok()?,
-        phantom48v: device::get_switch(Control::Phantom48v).ok()?,
-    })
+fn read_switches(info: &device::DeviceInfo) -> BTreeMap<Control, bool> {
+    info.controls.iter().filter_map(|&c| Some((c, device::get_switch(c).ok()?))).collect()
 }
 
 #[tauri::command]
@@ -41,31 +47,30 @@ fn mixer_meters() -> Result<Vec<Option<f64>>, String> {
 
 #[tauri::command]
 fn status() -> Status {
-    match device::clock_selector() {
-        Ok(v) => Status {
-            supported: true,
-            connected: true,
-            clock_selector: Some(v),
-            sample_rate: device::sample_rate().ok(),
-            switches: read_switches(),
-            error: None,
-        },
-        Err(e @ (usb::UsbError::NotFound | usb::UsbError::Unsupported)) => Status {
-            supported: !matches!(e, usb::UsbError::Unsupported),
-            connected: false,
-            clock_selector: None,
-            sample_rate: None,
-            switches: None,
-            error: None,
-        },
-        Err(e) => Status {
-            supported: true,
-            connected: true,
-            clock_selector: None,
-            sample_rate: None,
-            switches: None,
-            error: Some(e.to_string()),
-        },
+    let model = match device::model() {
+        Ok(m) => m,
+        Err(usb::UsbError::NotFound) => return Status::offline(true, None),
+        Err(usb::UsbError::Unsupported) => return Status::offline(false, None),
+        Err(e) => return Status::offline(true, Some(e.to_string())),
+    };
+    // The clock read doubles as a presence check: it fails with NotFound once unplugged.
+    let clock = device::clock_selector();
+    let error = match &clock {
+        Err(usb::UsbError::NotFound) => return Status::offline(true, None),
+        // Clock entities are only verified on the MiniFuse 4; elsewhere a failure is expected.
+        Err(e) if model.has_mixer() => Some(e.to_string()),
+        _ => None,
+    };
+    let info = model.info();
+    let switches = read_switches(&info);
+    Status {
+        supported: true,
+        connected: true,
+        clock_selector: clock.ok(),
+        sample_rate: device::sample_rate().ok(),
+        switches: (!switches.is_empty()).then_some(switches),
+        device: Some(info),
+        error,
     }
 }
 

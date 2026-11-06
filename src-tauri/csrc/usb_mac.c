@@ -13,6 +13,7 @@
 #define FP_NOT_FOUND (-1)
 
 static IOUSBDeviceInterface650 **g_dev = NULL;
+static uint16_t g_vid = 0, g_pid = 0;
 
 static void fp_close(void) {
   if (g_dev) {
@@ -22,7 +23,8 @@ static void fp_close(void) {
 }
 
 static int fp_open(uint16_t vid, uint16_t pid) {
-  if (g_dev) return 0;
+  if (g_dev && g_vid == vid && g_pid == pid) return 0;
+  fp_close();
   CFMutableDictionaryRef m = IOServiceMatching("IOUSBHostDevice");
   int v = vid, p = pid;
   CFNumberRef nv = CFNumberCreate(NULL, kCFNumberIntType, &v);
@@ -46,8 +48,14 @@ static int fp_open(uint16_t vid, uint16_t pid) {
     g_dev = NULL;
     return FP_NOT_FOUND;
   }
+  g_vid = vid;
+  g_pid = pid;
   return 0;
 }
+
+// 0 when a device with this vendor and product id is attached, else FP_NOT_FOUND or an
+// IOReturn code. Keeps the handle cached for the next request.
+int fp_probe(uint16_t vid, uint16_t pid) { return fp_open(vid, pid); }
 
 // Returns 0 on success, FP_NOT_FOUND if no device, else an IOReturn code.
 int fp_request(uint16_t vid, uint16_t pid, uint8_t rt, uint8_t rq, uint16_t wv,
