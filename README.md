@@ -1,7 +1,17 @@
-# Open MF
+<p align="center">
+  <img src="src-tauri/icons/app-icon.svg" width="96" height="96" alt="Open MF logo">
+</p>
 
-A small, fast control panel for the **Arturia MiniFuse** audio interfaces. Built with
-Tauri 2, React, TypeScript, shadcn/ui and Tailwind 4.
+<h1 align="center">Open MF</h1>
+
+<p align="center">
+  A small, fast control panel for the <strong>Arturia MiniFuse</strong> audio interfaces.<br>
+  Built with Tauri 2, React, TypeScript, shadcn/ui and Tailwind 4.
+</p>
+
+<p align="center">
+  <img src="docs/screenshot.png" width="800" alt="Open MF: the Main mix with Input 1 and USB 1–2, and the Inputs tab in the sidebar">
+</p>
 
 > Open MF is an independent project. It is not affiliated with, endorsed by or supported
 > by Arturia. "MiniFuse" is a trademark of its owner.
@@ -27,8 +37,8 @@ switches are write-only as far as known: Open MF shows what it last set.
   - Mix actions: clear solo, mute or unmute all, reset the mix, copy it to another output.
 - **Default positions:** double-click, Alt-click or Backspace resets a control. Right-click
   to reset it, make the current value its default, or reset the whole strip. Factory
-  defaults are 0 dB and center pan (stereo pairs hard left and right), except the Main and Cue mix levels: they reset to
-  −20 dB to protect speakers and ears.
+  defaults are 0 dB and center pan (stereo pairs hard left and right), except the Main
+  and Cue mix levels: they reset to −20 dB to protect speakers and ears.
 - **Type a value:** click a dB readout and type `-6`, `0` or `inf`. Enter applies, Esc cancels.
 - **Rename channels:** double-click a strip name.
 - **Undo and redo** for every change, including presets and copied mixes.
@@ -60,6 +70,20 @@ Settings and presets live in the webview's `localStorage`.
 
 On Windows and Linux the app builds and runs, and says that device control is not
 supported on this OS.
+
+## Install
+
+There are no releases yet. Each push to `main` builds the app in
+[GitHub Actions](https://github.com/ph1p/open-mf/actions/workflows/build.yml): open the
+latest run and download `open-mf-macos-latest` (universal `.dmg`), `open-mf-windows-latest`
+or `open-mf-ubuntu-22.04`. You need to be signed in to GitHub to download them.
+
+The macOS build is not signed or notarized. After copying the app to `/Applications`,
+clear the quarantine flag once:
+
+```sh
+xattr -dr com.apple.quarantine "/Applications/Open MF.app"
+```
 
 ## Development
 
