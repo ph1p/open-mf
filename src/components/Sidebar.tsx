@@ -6,6 +6,7 @@ import { InputTile } from "@/components/InputTile";
 import { Meter } from "@/components/Meter";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Switch } from "@/components/ui/switch";
+import { SystemAudio } from "@/components/SystemAudio";
 import {
   app, busMeter, defaultOf, mixPlayedBy, moveTrim, resetTrim, setLink34, setSource, setTrimDefault, startDrag,
   toggleSwitch, trimKey,
@@ -15,7 +16,7 @@ import { settings } from "@/lib/settings";
 import { useStore } from "@/lib/store";
 import { cn } from "@/lib/utils";
 
-function Heading({ children, hint }: { children: string; hint: string }) {
+export function Heading({ children, hint }: { children: string; hint: string }) {
   return (
     <h2 className="mb-2 flex items-center gap-1 text-[12px] font-semibold tracking-wide text-muted-foreground uppercase">
       {children}
@@ -139,6 +140,7 @@ export function Sidebar() {
       </section>
 
       {mixer && <Outputs mixer={mixer} />}
+      <SystemAudio />
     </div>
   );
 }

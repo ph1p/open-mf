@@ -25,7 +25,10 @@ Tauri 2, React, TypeScript, shadcn/ui and Tailwind 4.
   the focused strip; Cmd/Ctrl+Z undoes; Cmd+Shift+Z or Ctrl+Y redoes.
 - **Live meters** for every channel and bus, with configurable warn level, clip hold and
   peak hold.
-- **Inputs:** INST switches, 48 V phantom power, trim for Inputs 3–4, 3–4 stereo link.
+- **Computer audio:** which apps play to the MiniFuse right now, a button to make it the
+  system output, and system volume and mute when the OS offers them. On Linux each app
+  also gets its own volume.
+- **Inputs:** Hi-Z (guitar / bass) switches, 48 V phantom power, trim for Inputs 3–4, 3–4 stereo link.
 - **Presets:** built-in setups plus your own, saved locally. Applying one writes only the
   values that differ.
 - **Two-way sync:** changes made in the vendor app show up in Open MF. Polling speeds up
@@ -36,11 +39,11 @@ Settings and presets live in the webview's `localStorage`.
 
 ## Platform support
 
-| OS      | UI  | Device control                                   |
-| ------- | --- | ------------------------------------------------ |
-| macOS   | yes | yes (IOKit, `src-tauri/csrc/usb_mac.c`)          |
-| Windows | yes | not yet: the audio driver owns the USB interface |
-| Linux   | yes | not yet: the kernel audio driver owns the device |
+| OS      | UI  | Device control                                   | Computer audio                                           |
+| ------- | --- | ------------------------------------------------ | -------------------------------------------------------- |
+| macOS   | yes | yes (IOKit, `src-tauri/csrc/usb_mac.c`)          | yes (Core Audio, `csrc/audio_mac.c`); app list needs 14.2+ |
+| Windows | yes | not yet: the audio driver owns the USB interface | not yet: the section says so                             |
+| Linux   | yes | not yet: the kernel audio driver owns the device | yes, via `pactl` (PulseAudio or PipeWire), per-app volume |
 
 On Windows and Linux the app builds and runs, and says that device control is not
 supported on this OS.
@@ -70,7 +73,9 @@ src/lib/                   app state and actions, device, presets, settings
 src-tauri/src/device.rs    control transfers, meters, clock
 src-tauri/src/mixer.rs     typed mixer ops (range-checked before any write)
 src-tauri/src/usb.rs       raw USB transport (macOS only for now)
+src-tauri/src/sysaudio.rs  computer audio: Core Audio on macOS, pactl on Linux
 src-tauri/csrc/usb_mac.c   IOKit shim
+src-tauri/csrc/audio_mac.c Core Audio shim
 ```
 
 ## Protocol notes

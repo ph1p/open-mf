@@ -1,5 +1,6 @@
 mod device;
 mod mixer;
+mod sysaudio;
 mod usb;
 
 use device::Control;
@@ -89,6 +90,33 @@ fn mixer_apply_many(ops: Vec<mixer::Op>) -> Result<(), String> {
     ops.into_iter().try_for_each(|op| mixer::apply(op).map_err(|e| e.to_string()))
 }
 
+/// OS output devices, the MiniFuse's system volume and the apps playing to it.
+#[tauri::command]
+async fn system_audio() -> sysaudio::SystemAudio {
+    // Off the main thread: Core Audio and pactl calls can take a few ms each.
+    tauri::async_runtime::spawn_blocking(sysaudio::state).await.unwrap_or_default()
+}
+
+#[tauri::command]
+async fn set_default_output(id: String) -> Result<(), String> {
+    tauri::async_runtime::spawn_blocking(move || sysaudio::set_default_output(&id)).await.map_err(|e| e.to_string())?
+}
+
+#[tauri::command]
+async fn set_system_volume(volume: f32) -> Result<(), String> {
+    tauri::async_runtime::spawn_blocking(move || sysaudio::set_volume(volume)).await.map_err(|e| e.to_string())?
+}
+
+#[tauri::command]
+async fn set_system_mute(on: bool) -> Result<(), String> {
+    tauri::async_runtime::spawn_blocking(move || sysaudio::set_mute(on)).await.map_err(|e| e.to_string())?
+}
+
+#[tauri::command]
+async fn set_app_volume(id: String, volume: f32) -> Result<(), String> {
+    tauri::async_runtime::spawn_blocking(move || sysaudio::set_app_volume(&id, volume)).await.map_err(|e| e.to_string())?
+}
+
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     // Remember size, position and maximized state. Decorations stay as configured per OS.
@@ -102,7 +130,10 @@ pub fn run() {
 
     tauri::Builder::default()
         .plugin(window_state)
-        .invoke_handler(tauri::generate_handler![status, set_switch, mixer_state, mixer_apply, mixer_apply_many, mixer_meters])
+        .invoke_handler(tauri::generate_handler![
+            status, set_switch, mixer_state, mixer_apply, mixer_apply_many, mixer_meters,
+            system_audio, set_default_output, set_system_volume, set_system_mute, set_app_volume
+        ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
 }
