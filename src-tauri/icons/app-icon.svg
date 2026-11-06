@@ -1,0 +1,20 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1024 1024">
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#26262c"/>
+      <stop offset="1" stop-color="#121215"/>
+    </linearGradient>
+  </defs>
+  <!-- macOS icon grid: 824 px body, 100 px margin -->
+  <rect x="100" y="100" width="824" height="824" rx="185" fill="url(#bg)"/>
+  <rect x="100.5" y="100.5" width="823" height="823" rx="184.5" fill="none" stroke="#ffffff" stroke-opacity=".08"/>
+  <!-- Same glyph as the title bar: three fader tracks with their knobs (16-unit grid, 37 px per unit) -->
+  <g transform="translate(216 216) scale(37)" fill="#34d399">
+    <rect x="2" y="2" width="2" height="12" rx="1" opacity=".3"/>
+    <rect x="7" y="2" width="2" height="12" rx="1" opacity=".3"/>
+    <rect x="12" y="2" width="2" height="12" rx="1" opacity=".3"/>
+    <rect x="1" y="9" width="4" height="2.5" rx="1"/>
+    <rect x="6" y="4" width="4" height="2.5" rx="1"/>
+    <rect x="11" y="7" width="4" height="2.5" rx="1"/>
+  </g>
+</svg>
