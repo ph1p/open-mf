@@ -23,10 +23,7 @@ const IO_RETURN_PIPE_STALLED: u32 = 0xe000_404f;
 
 #[cfg(target_os = "macos")]
 unsafe extern "C" {
-    fn fp_request(
-        vid: u16, pid: u16, rt: u8, rq: u8, wv: u16, wi: u16,
-        buf: *mut u8, len: u16, done: *mut u16,
-    ) -> i32;
+    fn fp_request(vid: u16, pid: u16, rt: u8, rq: u8, wv: u16, wi: u16, buf: *mut u8, len: u16, done: *mut u16) -> i32;
 }
 
 /// Serializes all transfers; the C shim keeps one cached device handle.

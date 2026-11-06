@@ -139,11 +139,7 @@ pub fn read_state() -> Result<MixerState, MixerError> {
             });
         }
         let master = read_param(P_MASTER, bus)?;
-        buses.push(Bus {
-            master_db: level_or_off(raw_to_db(master)),
-            source: read_param(P_SOURCE + bus, 0)?,
-            strips,
-        });
+        buses.push(Bus { master_db: level_or_off(raw_to_db(master)), source: read_param(P_SOURCE + bus, 0)?, strips });
     }
     Ok(MixerState {
         buses,
@@ -160,25 +156,48 @@ pub const METERS: usize = CHANNELS as usize + 2 * 3;
 /// then `CHANNELS + 2*bus` / `+1` = bus L/R (Main post-master, Cue 1/2 pre-master).
 pub fn meters() -> Result<Vec<Option<f64>>, MixerError> {
     let words = read_meters()?;
-    Ok(words[..METERS]
-        .iter()
-        .map(|&w| (w != 0).then(|| 20.0 * (f64::from(w) / 2_147_483_648.0).log10()))
-        .collect())
+    Ok(words[..METERS].iter().map(|&w| (w != 0).then(|| 20.0 * (f64::from(w) / 2_147_483_648.0).log10())).collect())
 }
 
 /// One validated write. The frontend can only reach the device through these.
 #[derive(Debug, Deserialize)]
 #[serde(tag = "op", rename_all = "camelCase", rename_all_fields = "camelCase")]
 pub enum Op {
-    Level { bus: u8, ch: u8, level_db: Option<f64>, pan: f64 },
-    Mute { bus: u8, ch: u8, on: bool },
-    Solo { bus: u8, ch: u8, on: bool },
-    Master { bus: u8, level_db: Option<f64> },
-    Source { bus: u8, source: u16 },
-    Link34 { on: bool },
+    Level {
+        bus: u8,
+        ch: u8,
+        level_db: Option<f64>,
+        pan: f64,
+    },
+    Mute {
+        bus: u8,
+        ch: u8,
+        on: bool,
+    },
+    Solo {
+        bus: u8,
+        ch: u8,
+        on: bool,
+    },
+    Master {
+        bus: u8,
+        level_db: Option<f64>,
+    },
+    Source {
+        bus: u8,
+        source: u16,
+    },
+    Link34 {
+        on: bool,
+    },
     /// `input` is 3 or 4.
-    Trim { input: u8, db: f64 },
-    LedIntensity { level: u16 },
+    Trim {
+        input: u8,
+        db: f64,
+    },
+    LedIntensity {
+        level: u16,
+    },
 }
 
 pub fn apply(op: Op) -> Result<(), MixerError> {

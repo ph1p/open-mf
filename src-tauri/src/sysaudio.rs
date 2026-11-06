@@ -36,6 +36,7 @@ pub struct App {
     pub volume: Option<f32>,
 }
 
+#[cfg_attr(not(any(target_os = "macos", target_os = "linux")), allow(dead_code))]
 fn is_minifuse(name: &str) -> bool {
     name.to_lowercase().contains("minifuse")
 }
@@ -45,7 +46,7 @@ pub use imp::{set_app_volume, set_default_output, set_mute, set_volume, state};
 #[cfg(target_os = "macos")]
 mod imp {
     use super::*;
-    use std::ffi::{c_char, c_int, CStr};
+    use std::ffi::{CStr, c_char, c_int};
 
     unsafe extern "C" {
         fn sa_outputs(ids: *mut u32, max: c_int) -> c_int;
@@ -196,9 +197,9 @@ mod imp {
                 Some(Output { is_default: name == def, name: sink_label(s), id: name })
             })
             .collect::<Vec<_>>();
-        let mf = sinks.iter().find(|s| {
-            is_minifuse(&sink_label(s)) || s.get("name").and_then(Value::as_str).is_some_and(is_minifuse)
-        });
+        let mf = sinks
+            .iter()
+            .find(|s| is_minifuse(&sink_label(s)) || s.get("name").and_then(Value::as_str).is_some_and(is_minifuse));
         let Some(mf) = mf else {
             return SystemAudio { supported: true, outputs, ..Default::default() };
         };
