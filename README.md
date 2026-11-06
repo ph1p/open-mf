@@ -73,10 +73,10 @@ supported on this OS.
 
 ## Install
 
-There are no releases yet. Each push to `main` builds the app in
-[GitHub Actions](https://github.com/ph1p/open-mf/actions/workflows/build.yml): open the
-latest run and download `open-mf-macos-latest` (universal `.dmg`), `open-mf-windows-latest`
-or `open-mf-ubuntu-22.04`. You need to be signed in to GitHub to download them.
+Download the app for your OS from
+[Releases](https://github.com/ph1p/open-mf/releases): a universal `.dmg` for macOS, `.msi`
+or `.exe` for Windows, `.deb` or `.AppImage` for Linux. Builds of every push to `main` are
+also attached to the [Actions runs](https://github.com/ph1p/open-mf/actions/workflows/build.yml).
 
 The macOS build is not signed or notarized. After copying the app to `/Applications`,
 clear the quarantine flag once:
@@ -97,6 +97,13 @@ pnpm check                   # TypeScript
 cd src-tauri && cargo test   # protocol encoding tests
 pnpm tauri build             # release bundle
 ```
+
+Releases are automatic. Commit messages follow
+[Conventional Commits](https://www.conventionalcommits.org/), and on every push to `main`
+semantic-release picks the next version from them: `fix:` bumps the patch, `feat:` the
+minor, a `BREAKING CHANGE:` footer or `feat!:` the major. Other types (`docs:`, `chore:`,
+`ci:` …) release nothing. CI builds all platforms with that version, then commits the bump,
+tags it and publishes the GitHub release with the bundles.
 
 To change the app icon, edit `src-tauri/icons/app-icon.svg` and run
 `pnpm tauri icon src-tauri/icons/app-icon.svg`.
