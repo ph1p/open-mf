@@ -103,4 +103,4 @@ The initial INST and 48 V selectors came from
 
 ## License
 
-MIT
+MIT, see [LICENSE](LICENSE).
