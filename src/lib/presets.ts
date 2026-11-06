@@ -13,17 +13,24 @@ const near = (a: number | null | undefined, b: number | null | undefined, eps = 
 const off: Strip = { levelDb: null, pan: 0, mute: false, solo: false };
 const at = (pan: number): Strip => ({ levelDb: 0, pan, mute: false, solo: false });
 
-/** Channel order: In 1-4, USB 1-6. Stereo pairs are panned hard left/right. */
+/** Channel order: In 1-4, USB 1-6. Mono inputs 1-2 sit in the center, stereo pairs are panned hard left/right. */
 const computerOnly = (): Strip[] => [off, off, off, off, at(-1), at(1), off, off, off, off];
+const inputsOnly = (): Strip[] => [at(0), at(0), at(-1), at(1), off, off, off, off, off, off];
 const inputsAndComputer = (): Strip[] => [at(0), at(0), at(-1), at(1), at(-1), at(1), off, off, off, off];
 const everything = (): Strip[] => [at(0), at(0), at(-1), at(1), at(-1), at(1), at(-1), at(1), at(-1), at(1)];
 
-/** Each mix plays on its own output (sources 1, 3, 5). Built-ins never touch mix levels. */
-const mixes = (main: Strip[], cue: Strip[], loop: Strip[]): PresetData => ({
+/** Output sources as the device numbers them (see SOURCES in device.ts). */
+const MAIN_MIX = 1, USB34 = 2, CUE_MIX = 3, LOOP_MIX = 5, MIRROR_MAIN = 6;
+
+/**
+ * Each mix plays on its own output unless `cueSource` routes Outputs 3–4 elsewhere.
+ * Built-ins never touch mix levels, so applying one cannot make the speakers jump.
+ */
+const mixes = (main: Strip[], cue: Strip[], loop: Strip[], cueSource = CUE_MIX): PresetData => ({
   buses: [
-    { source: 1, strips: main },
-    { source: 3, strips: cue },
-    { source: 5, strips: loop },
+    { source: MAIN_MIX, strips: main },
+    { source: cueSource, strips: cue },
+    { source: LOOP_MIX, strips: loop },
   ],
 });
 
@@ -41,10 +48,34 @@ export const BUILTIN_PRESETS: BuiltinPreset[] = [
     build: () => mixes(inputsAndComputer(), inputsAndComputer(), computerOnly()),
   },
   {
+    id: "speakers",
+    name: "Mics with speakers",
+    desc: "Speakers (Outputs 1–2) play only the computer, so open mics cannot feed back. Headphones on 3–4 hear everything.",
+    build: () => mixes(computerOnly(), inputsAndComputer(), computerOnly()),
+  },
+  {
     id: "stream",
-    name: "Streaming & calls",
-    desc: "Like monitoring, and Loopback sends inputs + computer back to the computer for OBS or calls.",
+    name: "Streaming",
+    desc: "Loopback sends inputs + computer to the computer, ready for OBS. For calls use “Calls & podcasts”.",
     build: () => mixes(inputsAndComputer(), inputsAndComputer(), inputsAndComputer()),
+  },
+  {
+    id: "calls",
+    name: "Calls & podcasts",
+    desc: "Loopback sends only your inputs, so people in the call do not hear themselves back. You hear everything.",
+    build: () => mixes(inputsAndComputer(), inputsAndComputer(), inputsOnly()),
+  },
+  {
+    id: "daw-cue",
+    name: "DAW headphone mix",
+    desc: "Outputs 3–4 play USB 3–4, so your DAW sends its own cue mix there. Main monitors inputs + computer.",
+    build: () => mixes(inputsAndComputer(), inputsAndComputer(), computerOnly(), USB34),
+  },
+  {
+    id: "mirror",
+    name: "Same on all outputs",
+    desc: "Outputs 3–4 copy Outputs 1–2, e.g. for a second pair of speakers or headphones.",
+    build: () => mixes(inputsAndComputer(), inputsAndComputer(), computerOnly(), MIRROR_MAIN),
   },
   {
     id: "reset",
