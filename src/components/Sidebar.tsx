@@ -1,7 +1,7 @@
-import { CircleHelpIcon } from "lucide-react";
+import { useState } from "react";
+import { Tabs } from "radix-ui";
 import { CenterSlider, quantizeTrim } from "@/components/CenterSlider";
 import { ControlMenu } from "@/components/ControlMenu";
-import { Hint } from "@/components/Hint";
 import { InputTile } from "@/components/InputTile";
 import { Meter } from "@/components/Meter";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -16,17 +16,31 @@ import { settings } from "@/lib/settings";
 import { useStore } from "@/lib/store";
 import { cn } from "@/lib/utils";
 
-export function Heading({ children, hint }: { children: string; hint: string }) {
-  return (
-    <h2 className="mb-2 flex items-center gap-1 text-[12px] font-semibold tracking-wide text-muted-foreground uppercase">
-      {children}
-      <Hint text={hint} side="bottom">
-        <button type="button" aria-label={`About ${children}`} className="rounded text-muted-foreground/70 hover:text-foreground">
-          <CircleHelpIcon className="size-3.5" />
-        </button>
-      </Hint>
-    </h2>
-  );
+/** One line under the sidebar tabs saying what the panel controls. */
+export function Intro({ children }: { children: string }) {
+  return <p className="mb-3 text-[13px] text-muted-foreground">{children}</p>;
+}
+
+/** Small label for a group of rows inside a panel. */
+function Sub({ children }: { children: string }) {
+  return <h3 className="mb-1 text-[12px] font-semibold tracking-wide text-muted-foreground uppercase">{children}</h3>;
+}
+
+const PANELS = [
+  { id: "inputs", label: "Inputs" },
+  { id: "outputs", label: "Outputs" },
+  { id: "computer", label: "Computer" },
+] as const;
+type Panel = (typeof PANELS)[number]["id"];
+const PANEL_KEY = "openmf.sidebarPanel";
+
+function savedPanel(): Panel {
+  try {
+    const v = localStorage.getItem(PANEL_KEY);
+    return PANELS.some((p) => p.id === v) ? (v as Panel) : "inputs";
+  } catch {
+    return "inputs";
+  }
 }
 
 /** A labelled on/off row. */
@@ -60,8 +74,8 @@ function SwitchRow({
   );
 }
 
-/** Inputs (front jacks) and outputs (what each destination plays). */
-export function Sidebar() {
+/** Front jacks: Hi-Z and 48 V for 1–2, trim and stereo link for 3–4. */
+function Inputs() {
   const mixer = useStore(app, (s) => s.mixer);
   const switches = useStore(app, (s) => s.switches);
   const pending = useStore(app, (s) => s.pending);
@@ -69,9 +83,10 @@ export function Sidebar() {
   useStore(settings, (s) => s.defaults);
 
   return (
-    <div className="flex flex-col gap-6 p-4">
+    <div className="flex flex-col gap-5">
       <section>
-        <Heading hint="The jacks on the front. Set gain with the knobs on the device.">Inputs</Heading>
+        <Intro>The jacks on the MiniFuse. Set gain with the knobs on the device.</Intro>
+        <Sub>Inputs 1–2 · mic and instrument</Sub>
         <div className="flex flex-col divide-y divide-border">
           {([0, 1] as const).map((i) => {
             const id: Control = i === 0 ? "inst1" : "inst2";
@@ -98,57 +113,98 @@ export function Sidebar() {
           onChange={() => void toggleSwitch("phantom48v")}
         />
 
-        {mixer && (
-          <>
-            <div className="mt-2 flex flex-col divide-y divide-border border-t pt-3">
-              {([0, 1] as const).map((i) => (
-                <InputTile key={i} ch={i + 2} name={CHANNELS[i + 2]} kind={mixer.link34 ? (i ? "Stereo R" : "Stereo L") : "¼″ line"}>
-                  <div className="flex items-center gap-2 text-[13px]">
-                    <span className="w-8 text-muted-foreground">Trim</span>
-                    <ControlMenu
-                      className="min-w-0 flex-1"
-                      defaultText={fmtDb(defaultOf(trimKey(i)))}
-                      onReset={() => resetTrim(i)}
-                      onSetDefault={() => setTrimDefault(i)}
-                    >
-                      <CenterSlider
-                        value={mixer.trimDb[i]}
-                        min={-24}
-                        max={24}
-                        step={0.5}
-                        quantize={quantizeTrim}
-                        label={`Trim ${i + 3}`}
-                        valueText={fmtDb(mixer.trimDb[i])}
-                        onChange={(db) => moveTrim(i, db)}
-                        onReset={() => resetTrim(i)}
-                        onDragStart={startDrag}
-                      />
-                    </ControlMenu>
-                    <output className="w-14 text-right text-[12px] tabular-nums">{fmtDb(mixer.trimDb[i])}</output>
-                  </div>
-                </InputTile>
-              ))}
-            </div>
-            <SwitchRow
-              label="Link as stereo pair"
-              hint="Inputs 3 and 4 share one trim"
-              checked={mixer.link34}
-              onChange={() => setLink34(!mixer.link34)}
-            />
-          </>
-        )}
       </section>
 
-      {mixer && <Outputs mixer={mixer} />}
-      <SystemAudio />
+      {mixer && (
+        <section>
+          <Sub>Inputs 3–4 · line</Sub>
+          <div className="flex flex-col divide-y divide-border">
+            {([0, 1] as const).map((i) => (
+              <InputTile key={i} ch={i + 2} name={CHANNELS[i + 2]} kind={mixer.link34 ? (i ? "Stereo R" : "Stereo L") : "¼″ line"}>
+                <div className="flex items-center gap-2 text-[13px]">
+                  <span className="w-8 text-muted-foreground">Trim</span>
+                  <ControlMenu
+                    className="min-w-0 flex-1"
+                    defaultText={fmtDb(defaultOf(trimKey(i)))}
+                    onReset={() => resetTrim(i)}
+                    onSetDefault={() => setTrimDefault(i)}
+                  >
+                    <CenterSlider
+                      value={mixer.trimDb[i]}
+                      min={-24}
+                      max={24}
+                      step={0.5}
+                      quantize={quantizeTrim}
+                      label={`Trim ${i + 3}`}
+                      valueText={fmtDb(mixer.trimDb[i])}
+                      onChange={(db) => moveTrim(i, db)}
+                      onReset={() => resetTrim(i)}
+                      onDragStart={startDrag}
+                    />
+                  </ControlMenu>
+                  <output className="w-14 text-right text-[12px] tabular-nums">{fmtDb(mixer.trimDb[i])}</output>
+                </div>
+              </InputTile>
+            ))}
+          </div>
+          <SwitchRow
+            label="Link as stereo pair"
+            hint="Inputs 3 and 4 share one trim"
+            checked={mixer.link34}
+            onChange={() => setLink34(!mixer.link34)}
+          />
+        </section>
+      )}
     </div>
+  );
+}
+
+/** Tabs keep the sidebar to one short panel at a time; the choice is remembered. */
+export function Sidebar() {
+  const mixer = useStore(app, (s) => s.mixer);
+  const [panel, setPanel] = useState<Panel>(savedPanel);
+  const pick = (v: string) => {
+    setPanel(v as Panel);
+    try {
+      localStorage.setItem(PANEL_KEY, v);
+    } catch {
+      // Private mode: the choice is just not remembered.
+    }
+  };
+
+  return (
+    <Tabs.Root value={panel} onValueChange={pick} className="flex flex-col">
+      <Tabs.List
+        aria-label="Sidebar"
+        className="sticky top-0 z-10 m-3 mb-0 grid grid-cols-3 gap-1 rounded-lg border bg-muted/60 p-1 backdrop-blur"
+      >
+        {PANELS.map((p) => (
+          <Tabs.Trigger
+            key={p.id}
+            value={p.id}
+            className="rounded-md px-2 py-1.5 text-[13px] font-medium text-muted-foreground transition outline-none hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring data-[state=active]:bg-card data-[state=active]:text-foreground data-[state=active]:shadow-sm"
+          >
+            {p.label}
+          </Tabs.Trigger>
+        ))}
+      </Tabs.List>
+      <Tabs.Content value="inputs" className="p-4 outline-none">
+        <Inputs />
+      </Tabs.Content>
+      <Tabs.Content value="outputs" className="p-4 outline-none">
+        {mixer && <Outputs mixer={mixer} />}
+      </Tabs.Content>
+      <Tabs.Content value="computer" className="p-4 outline-none">
+        <SystemAudio />
+      </Tabs.Content>
+    </Tabs.Root>
   );
 }
 
 function Outputs({ mixer: m }: { mixer: Mixer }) {
   return (
     <section>
-      <Heading hint="What each output plays. Pick a mix in the mixer to set its faders.">Outputs</Heading>
+      <Intro>What each output plays. Pick a mix in the mixer to set its faders.</Intro>
       <div className="flex flex-col divide-y divide-border">
         {DESTINATIONS.map((d, i) => {
           const played = mixPlayedBy(m, i);
@@ -167,7 +223,7 @@ function Outputs({ mixer: m }: { mixer: Mixer }) {
                 )}
               </div>
               <div className="flex items-center gap-2">
-              <span className="w-9 shrink-0 text-[13px] text-muted-foreground">Plays</span>
+                <span className="w-9 shrink-0 text-[13px] text-muted-foreground">Plays</span>
                 <Select value={String(m.buses[i].source)} onValueChange={(v) => setSource(i, +v)}>
                   <SelectTrigger size="sm" className="min-w-0 flex-1 text-[13px]" aria-label={`${d.name} plays`}>
                     <SelectValue />

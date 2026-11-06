@@ -36,18 +36,17 @@ function MixerView({ mixer }: { mixer: Mixer }) {
 
   return (
     // One fader height for every strip and the master, so 0 dB lines up across the mixer.
-    <div className="flex min-h-0 min-w-0 flex-1 flex-col [--fader-h:clamp(200px,calc(100dvh-360px),420px)]">
+    <div className="flex min-h-0 min-w-0 flex-1 flex-col [--fader-h:clamp(200px,calc(100dvh-390px),420px)]">
       <MixerToolbar mixer={mixer} bus={bus} missing={missing} />
       <div className="flex min-h-0 flex-1">
         {/* Native overflow: Radix ScrollArea wraps content in display:table, which breaks the height stretch. */}
         <div className="min-w-0 flex-1 overflow-auto">
-          <div className="flex w-max min-w-full items-start gap-2 p-3">
+          <div className="flex w-max min-w-full items-stretch gap-2 p-3">
             {shownIn.length > 0 && (
               <StripGroup title="Inputs" dot="bg-sky-500" hint="Mics, instruments and line gear plugged into the front and back of the MiniFuse.">
                 {shownIn.map(strip)}
               </StripGroup>
             )}
-            {shownIn.length > 0 && shownUsb.length > 0 && <div className="mx-1 w-px shrink-0 self-stretch bg-border" aria-hidden="true" />}
             {shownUsb.length > 0 && (
               <StripGroup
                 title="From computer"
@@ -58,19 +57,20 @@ function MixerView({ mixer }: { mixer: Mixer }) {
               </StripGroup>
             )}
             {!showAll && missing.length > 0 && (
-              <div className="flex shrink-0 flex-col gap-1.5">
-                {/* Same height as a group title, so the tile lines up with the strips. */}
-                <span className="invisible text-[12px] font-semibold" aria-hidden="true">.</span>
-                <AddMenu missing={missing} align="start">
-                  <button
-                    type="button"
-                    className="flex h-(--fader-h) w-[84px] shrink-0 flex-col items-center justify-center gap-2 rounded-md border border-dashed text-[13px] text-muted-foreground transition hover:border-ring/60 hover:bg-card/60 hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none"
-                  >
-                    <PlusIcon className="size-5" />
-                    Add channel
-                  </button>
-                </AddMenu>
-              </div>
+              <AddMenu
+                missing={missing}
+                // Beside the tile: it is as tall as the strips, so below or above it lands off-screen.
+                side="right"
+                align="center"
+              >
+                <button
+                  type="button"
+                  className="flex w-[96px] shrink-0 flex-col items-center justify-center gap-2 rounded-xl border border-dashed p-3 text-center text-[13px] text-muted-foreground transition hover:border-ring/60 hover:bg-card/60 hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none"
+                >
+                  <PlusIcon className="size-5" />
+                  Add channel
+                </button>
+              </AddMenu>
             )}
             {shownIn.length + shownUsb.length === 0 && missing.length === 0 && (
               <p className="m-auto max-w-56 text-center text-[14px] text-muted-foreground">Nothing plays in this mix.</p>
@@ -87,14 +87,14 @@ function MixerView({ mixer }: { mixer: Mixer }) {
 
 function StripGroup({ title, dot, hint, children }: { title: string; dot: string; hint: string; children: React.ReactNode }) {
   return (
-    <div className="flex shrink-0 flex-col gap-1.5">
+    <div role="group" aria-label={title} className="flex shrink-0 flex-col gap-2 rounded-xl border bg-muted/30 p-2">
       <Hint text={hint} side="bottom" delay={500}>
-        <span tabIndex={0} className="flex w-fit items-center gap-1.5 rounded px-0.5 text-[12px] font-semibold tracking-wide text-muted-foreground uppercase outline-none focus-visible:ring-2 focus-visible:ring-ring">
-          <span className={`size-1.5 rounded-full ${dot}`} aria-hidden="true" />
+        <span tabIndex={0} className="flex w-fit items-center gap-1.5 rounded px-1 text-[12px] font-semibold tracking-wide text-muted-foreground uppercase outline-none focus-visible:ring-2 focus-visible:ring-ring">
+          <span className={`size-2 rounded-full ${dot}`} aria-hidden="true" />
           {title}
         </span>
       </Hint>
-      <div className="flex items-start gap-2">{children}</div>
+      <div className="flex flex-1 items-stretch gap-2">{children}</div>
     </div>
   );
 }

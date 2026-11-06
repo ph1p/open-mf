@@ -1,4 +1,5 @@
 import { CopyIcon, EllipsisIcon, PlusIcon } from "lucide-react";
+import { Tabs } from "radix-ui";
 import { Hint } from "@/components/Hint";
 import { Meter } from "@/components/Meter";
 import { Button } from "@/components/ui/button";
@@ -8,17 +9,17 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
-import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
   addUnit, app, busMeter, clearSolo, copyMix, heardOn, muteAll, resetMix, setBus, setSource, unitName, type Unit,
 } from "@/lib/app";
 import { DESTINATIONS, MIXES, type Mixer } from "@/lib/device";
 import { settings, updateSettings } from "@/lib/settings";
 import { useStore } from "@/lib/store";
+import { cn } from "@/lib/utils";
 
 function MiniMeters({ mixer, bus }: { mixer: Mixer; bus: number }) {
   return (
-    <span className="flex h-3.5 gap-px" aria-hidden="true">
+    <span className="flex h-4 gap-px" aria-hidden="true">
       {([0, 1] as const).map((side) => (
         <Meter key={side} select={(v) => busMeter(mixer, v, bus, side)} label="" className="h-full w-[3px]" />
       ))}
@@ -27,12 +28,22 @@ function MiniMeters({ mixer, bus }: { mixer: Mixer; bus: number }) {
 }
 
 /** Menu of channels that are not in the shown mix; picking one adds it. */
-export function AddMenu({ missing, align = "end", children }: { missing: Unit[]; align?: "start" | "end"; children: React.ReactNode }) {
+export function AddMenu({
+  missing,
+  side = "bottom",
+  align = "end",
+  children,
+}: {
+  missing: Unit[];
+  side?: "bottom" | "right";
+  align?: "start" | "center" | "end";
+  children: React.ReactNode;
+}) {
   const names = useStore(settings, (s) => s.names);
   return (
     <DropdownMenu>
       <DropdownMenuTrigger asChild>{children}</DropdownMenuTrigger>
-      <DropdownMenuContent align={align} className="w-52">
+      <DropdownMenuContent side={side} align={align} className="w-52">
         <DropdownMenuLabel className="text-[12px] text-muted-foreground">Add to this mix</DropdownMenuLabel>
         {missing.map((u) => (
           <DropdownMenuItem key={u.key} onSelect={() => addUnit(u)} className="text-[14px]">
@@ -54,22 +65,38 @@ export function MixerToolbar({ mixer, bus, missing }: { mixer: Mixer; bus: numbe
   const heard = heardOn(mixer, bus);
 
   return (
-    <div className="flex flex-col gap-2 border-b px-3 pt-2 pb-2">
+    <div className="flex flex-col gap-2.5 border-b px-3 py-2.5">
       <div className="flex flex-wrap items-center gap-2">
-        <span className="text-[13px] text-muted-foreground">Mix for</span>
-        <Tabs value={String(bus)} onValueChange={(v) => setBus(+v)}>
-          <TabsList className="h-8">
+        <Tabs.Root value={String(bus)} onValueChange={(v) => setBus(+v)}>
+          <Tabs.List aria-label="Mix to edit" className="flex gap-1 rounded-xl border bg-muted/40 p-1">
             {MIXES.map((m, i) => (
-              <Hint key={i} text={`${DESTINATIONS[i].hint} (${i + 1})`} side="bottom" delay={600}>
-                <TabsTrigger value={String(i)} className="h-7 gap-1.5 px-2.5 text-[13px]">
-                  <MiniMeters mixer={mixer} bus={i} />
-                  {m.name}
-                  <span className="text-[12px] font-normal text-muted-foreground">{m.tag}</span>
-                </TabsTrigger>
+              <Hint key={i} text={`${DESTINATIONS[i].hint}. Shortcut: ${i + 1}`} side="bottom" delay={600}>
+                <Tabs.Trigger
+                  value={String(i)}
+                  className={cn(
+                    "group/tab relative flex flex-col items-start rounded-lg px-4 py-2 text-left text-muted-foreground transition outline-none",
+                    "hover:bg-muted hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring",
+                    "aria-selected:bg-card aria-selected:text-foreground aria-selected:shadow-sm aria-selected:ring-1 aria-selected:ring-primary/50",
+                  )}
+                >
+                  <span className="flex items-center gap-2 text-[14px] font-semibold">
+                    <MiniMeters mixer={mixer} bus={i} />
+                    {m.name}
+                  </span>
+                  <span className="pl-[15px] text-[12px] group-aria-selected/tab:font-medium group-aria-selected/tab:text-primary">
+                    {m.tag}
+                  </span>
+                  {/* Underline marks the mix being edited, readable without color alone. Styled via
+                      aria-selected: the tooltip wrapper overwrites data-state with its own. */}
+                  <span
+                    className="absolute inset-x-4 -bottom-px h-0.5 rounded-full bg-primary opacity-0 transition group-aria-selected/tab:opacity-100"
+                    aria-hidden="true"
+                  />
+                </Tabs.Trigger>
               </Hint>
             ))}
-          </TabsList>
-        </Tabs>
+          </Tabs.List>
+        </Tabs.Root>
         <span className="flex-1" />
         {!showAll && (
           <AddMenu missing={missing}>
@@ -119,30 +146,37 @@ export function MixerToolbar({ mixer, bus, missing }: { mixer: Mixer; bus: numbe
           </DropdownMenuContent>
         </DropdownMenu>
       </div>
-      <p className="flex flex-wrap items-center gap-1.5 text-[13px]">
-        {heard.length ? (
-          <>
-            <span className="text-muted-foreground">Heard on</span>
-            {heard.map((d) => (
-              <span key={d} className="rounded bg-primary/10 px-1.5 py-px font-medium text-primary">
-                {DESTINATIONS[d].name}
+      <div className="flex flex-wrap items-center gap-x-4 gap-y-1.5 text-[13px]">
+        <p className="min-w-0">
+          <span className="font-semibold">Editing the {MIXES[bus].mixName}.</span>{" "}
+          <span className="text-muted-foreground">{MIXES[bus].about}</span>
+        </p>
+        <p className="ml-auto flex flex-wrap items-center gap-1.5">
+          {heard.length ? (
+            <>
+              <span className="text-muted-foreground">Heard on</span>
+              {heard.map((d) => (
+                <span key={d} className="rounded bg-primary/10 px-1.5 py-px font-medium text-primary">
+                  {DESTINATIONS[d].name}
+                </span>
+              ))}
+            </>
+          ) : (
+            <>
+              <span className="rounded bg-amber-500/15 px-1.5 py-px font-medium text-amber-700 dark:text-amber-400">
+                Not heard anywhere
               </span>
-            ))}
-          </>
-        ) : (
-          <>
-            <span className="rounded bg-amber-500/15 px-1.5 py-px font-medium text-amber-700 dark:text-amber-400">Not heard anywhere</span>
-            <span className="text-muted-foreground">No output plays this mix.</span>
-            <button
-              type="button"
-              className="font-medium text-primary hover:underline"
-              onClick={() => setSource(bus, MIXES[bus].ownSource)}
-            >
-              Play it on {DESTINATIONS[bus].name}
-            </button>
-          </>
-        )}
-      </p>
+              <button
+                type="button"
+                className="font-medium text-primary hover:underline"
+                onClick={() => setSource(bus, MIXES[bus].ownSource)}
+              >
+                Play it on {DESTINATIONS[bus].name}
+              </button>
+            </>
+          )}
+        </p>
+      </div>
       {anySolo && (
         <p role="status" className="flex items-center gap-2 rounded-md bg-amber-400/15 px-3 py-1.5 text-[13px]">
           <span className="font-semibold text-amber-700 dark:text-amber-400">Solo is on</span>

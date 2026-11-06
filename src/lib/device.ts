@@ -37,9 +37,9 @@ export const USB_CHANNELS = [4, 5, 6, 7, 8, 9];
  * destination play this mix. Main is metered after its level, the others before.
  */
 export const MIXES = [
-  { name: "Outputs 1–2", tag: "Main", ownSource: 1, postLevel: true },
-  { name: "Outputs 3–4", tag: "Cue", ownSource: 3, postLevel: false },
-  { name: "Loopback", tag: "To computer", ownSource: 5, postLevel: false },
+  { name: "Outputs 1–2", tag: "Main", mixName: "Main mix", ownSource: 1, postLevel: true, about: "Your speakers or main headphones." },
+  { name: "Outputs 3–4", tag: "Cue", mixName: "Cue mix", ownSource: 3, postLevel: false, about: "A second mix, e.g. for a performer's headphones." },
+  { name: "Loopback", tag: "To computer", mixName: "Loopback mix", ownSource: 5, postLevel: false, about: "What your computer records from the Loopback input." },
 ];
 
 /** What each destination is, in plain words. Index = bus. */

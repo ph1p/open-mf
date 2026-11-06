@@ -1,5 +1,5 @@
 import { CheckIcon, Volume2Icon, VolumeXIcon } from "lucide-react";
-import { Heading } from "@/components/Sidebar";
+import { Intro } from "@/components/Sidebar";
 import { Button } from "@/components/ui/button";
 import { OS } from "@/lib/platform";
 import { useStore } from "@/lib/store";
@@ -8,7 +8,7 @@ import {
 } from "@/lib/sysaudio";
 import { cn } from "@/lib/utils";
 
-const HINT = "How your computer sends sound to the MiniFuse. This arrives in the mixer as USB 1–2.";
+const HINT = "How your computer sends sound to the MiniFuse. It arrives in the mixer as USB 1–2.";
 
 /** 0..1 slider with a percent readout. */
 function Level({ value, label, disabled, onChange }: {
@@ -117,7 +117,7 @@ export function SystemAudio() {
 
   return (
     <section>
-      <Heading hint={HINT}>Computer audio</Heading>
+      <Intro>{HINT}</Intro>
       {body}
     </section>
   );

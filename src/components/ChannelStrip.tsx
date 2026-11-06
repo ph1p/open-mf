@@ -49,25 +49,32 @@ export function ChannelStrip({
       onPointerDownCapture={() => setFocusUnit(u.key)}
       className={cn(
         "group/strip relative flex shrink-0 flex-col items-center gap-2 rounded-md border bg-card px-2 pt-0 pb-2 transition",
-        pair ? "w-[124px]" : "w-[84px]",
+        pair ? "w-[136px]" : "w-[96px]",
         focused ? "border-ring/60" : "border-border",
       )}
     >
       <span className={cn("absolute inset-x-2 top-0 h-0.5 rounded-b", usb ? "bg-violet-500" : "bg-sky-500")} aria-hidden="true" />
 
-      <div className="mt-2 flex h-5 w-full items-center justify-center">
-        <StripName name={name} defaultName={u.defaultName} onRename={(v) => rename(u, v)} />
+      {/* Equal side columns keep the name centred; the remove button lives in the right one. */}
+      <div className="-mx-1 mt-2 grid h-6 w-[calc(100%+8px)] grid-cols-[14px_minmax(0,1fr)_14px] items-center">
+        <span />
+        <div className="flex min-w-0 justify-center">
+          <StripName name={name} defaultName={u.defaultName} onRename={(v) => rename(u, v)} />
+        </div>
+        <Hint text="Remove from this mix">
+          <button
+            type="button"
+            aria-label={`Remove ${name} from this mix`}
+            onClick={() => removeUnit(u)}
+            className={cn(
+              "grid size-3.5 place-items-center rounded text-muted-foreground transition hover:bg-muted hover:text-foreground focus-visible:opacity-100 focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none",
+              focused ? "opacity-100" : "opacity-0 group-hover/strip:opacity-100",
+            )}
+          >
+            <XIcon className="size-3" />
+          </button>
+        </Hint>
       </div>
-      <Hint text="Remove from this mix">
-        <button
-          type="button"
-          aria-label={`Remove ${name} from this mix`}
-          onClick={() => removeUnit(u)}
-          className="absolute top-1 right-1 grid size-4 place-items-center rounded text-muted-foreground opacity-0 transition group-hover/strip:opacity-100 hover:bg-muted hover:text-foreground focus-visible:opacity-100"
-        >
-          <XIcon className="size-3" />
-        </button>
-      </Hint>
 
       <div className={cn("flex h-(--fader-h) w-full justify-center gap-1.5 transition-opacity", quiet && "opacity-50")}>
         <div className="flex gap-0.5 py-1.5">
@@ -94,7 +101,8 @@ export function ChannelStrip({
 
       <DbReadout value={first.levelDb} max={10} label={`${name} level`} onCommit={(db) => typeLevel(u, db)} />
 
-      <div className="flex w-full flex-col gap-1">
+      {/* Fixed height: mono and stereo strips line up, pan readouts on one baseline. */}
+      <div className="flex h-14 w-full flex-col justify-center gap-1">
         {u.chs.map((ch, side) => {
           const pan = strips[ch].pan;
           return (
@@ -129,7 +137,7 @@ export function ChannelStrip({
         </span>
       </div>
 
-      <div className="grid w-full grid-cols-2 gap-1">
+      <div className="mt-auto grid w-full grid-cols-2 gap-1">
         <Hint text="Mute: remove from this mix (M)">
           <button
             type="button"
@@ -178,7 +186,7 @@ function StripName({ name, defaultName, onRename }: { name: string; defaultName:
               setText(name);
             }
           }}
-          className="max-w-full cursor-text truncate rounded px-1 text-[13px] font-semibold outline-none focus-visible:ring-2 focus-visible:ring-ring"
+          className="max-w-full cursor-text truncate rounded px-0.5 text-[13px] font-semibold outline-none focus-visible:ring-2 focus-visible:ring-ring"
         >
           {name}
         </h3>
