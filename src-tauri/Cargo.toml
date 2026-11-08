@@ -1,6 +1,6 @@
 [package]
 name = "minifuse-panel"
-version = "0.3.0"
+version = "0.3.1"
 description = "Control panel for the MiniFuse 4 USB audio interface"
 authors = ["Philip Stapelfeldt"]
 edition = "2024"
