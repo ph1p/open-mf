@@ -114,5 +114,4 @@ export function CenterSlider({
 
 /** Pan snaps to center close by and rounds to 1 %. */
 export const quantizePan = (v: number) => (Math.abs(v) < 0.04 ? 0 : Math.round(v * 100) / 100);
-/** Trim rounds to 0.5 dB and snaps to 0 close by. */
-export const quantizeTrim = (v: number) => (Math.abs(v) < 0.75 ? 0 : Math.round(v * 2) / 2);
+export { quantizeTrim } from "@/lib/taper";

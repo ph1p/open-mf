@@ -1,7 +1,7 @@
 import { useRef } from "react";
 import { fmtDb } from "@/lib/device";
 import { useLatest, useWheelSteps } from "@/lib/hooks";
-import { TAPERS, toDb, toT } from "@/lib/taper";
+import { TAPERS, stepDb, toDb, toT } from "@/lib/taper";
 import { cn } from "@/lib/utils";
 
 const TICKS: Record<0 | 10, number[]> = { 10: [10, 0, -10, -30, -60], 0: [0, -10, -30, -60] };
@@ -40,15 +40,7 @@ export function Fader({
   const set = (db: number | null) => {
     if (db !== latest.current.value) latest.current.onChange(db);
   };
-  const step = (delta: number) => {
-    const v = latest.current.value;
-    if (v === null) {
-      if (delta > 0) set(-59.5);
-      return;
-    }
-    const next = v + delta;
-    set(next <= -60 ? null : Math.min(max, next));
-  };
+  const step = (delta: number) => set(stepDb(latest.current.value, delta, -60, max));
   useWheelSteps(root, (dir) => step(dir * 0.5));
 
   return (

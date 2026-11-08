@@ -14,7 +14,6 @@ use tauri::{AppHandle, Emitter};
 
 #[derive(Clone, Serialize)]
 pub struct MidiEvent {
-    port: String,
     /// "note" (value 0 = released), "cc", "pc" or "pb".
     kind: &'static str,
     /// 1..16.
@@ -28,7 +27,7 @@ pub struct MidiEvent {
 static STARTED: AtomicBool = AtomicBool::new(false);
 static PORTS: Mutex<Vec<String>> = Mutex::new(Vec::new());
 
-fn parse(port: &str, msg: &[u8]) -> Option<MidiEvent> {
+fn parse(msg: &[u8]) -> Option<MidiEvent> {
     let (&status, data) = msg.split_first()?;
     let ch = (status & 0x0F) + 1;
     let d = |i: usize| data.get(i).copied().map(|b| b & 0x7F);
@@ -40,7 +39,7 @@ fn parse(port: &str, msg: &[u8]) -> Option<MidiEvent> {
         0xE0 => ("pb", 0, d(0)? as u16 | (d(1)? as u16) << 7),
         _ => return None,
     };
-    Some(MidiEvent { port: port.to_string(), kind, ch, num, value })
+    Some(MidiEvent { kind, ch, num, value })
 }
 
 /// Connects to all MIDI inputs and keeps doing so. Safe to call more than once.
@@ -51,8 +50,13 @@ pub fn start(app: AppHandle) {
     let _ = std::thread::Builder::new().name("midi".into()).spawn(move || {
         // Connections live here; dropping one closes it.
         let mut open: HashMap<String, midir::MidiInputConnection<()>> = HashMap::new();
+        // Lists the ports; made once, since port lists are read fresh on every call.
+        let mut probe = None;
         loop {
-            if let Ok(probe) = midir::MidiInput::new("Open MF") {
+            if probe.is_none() {
+                probe = midir::MidiInput::new("Open MF").ok();
+            }
+            if let Some(probe) = &probe {
                 let ports = probe.ports();
                 let names: Vec<String> = ports.iter().filter_map(|p| probe.port_name(p).ok()).collect();
                 open.retain(|name, _| names.contains(name));
@@ -66,12 +70,12 @@ pub fn start(app: AppHandle) {
                     else {
                         continue;
                     };
-                    let (app, label) = (app.clone(), name.clone());
+                    let app = app.clone();
                     let conn = input.connect(
                         &port,
                         "Open MF input",
                         move |_, msg, _| {
-                            if let Some(ev) = parse(&label, msg) {
+                            if let Some(ev) = parse(msg) {
                                 let _ = app.emit("midi", ev);
                             }
                         },
@@ -105,13 +109,13 @@ mod tests {
 
     #[test]
     fn parses_messages() {
-        let n = parse("x", &[0x91, 60, 100]).unwrap();
+        let n = parse(&[0x91, 60, 100]).unwrap();
         assert_eq!((n.kind, n.ch, n.num, n.value), ("note", 2, 60, 100));
-        assert_eq!(parse("x", &[0x80, 60, 64]).unwrap().value, 0);
-        let c = parse("x", &[0xB0, 7, 127]).unwrap();
+        assert_eq!(parse(&[0x80, 60, 64]).unwrap().value, 0);
+        let c = parse(&[0xB0, 7, 127]).unwrap();
         assert_eq!((c.kind, c.num, c.value), ("cc", 7, 127));
-        assert_eq!(parse("x", &[0xE0, 0x7F, 0x7F]).unwrap().value, 16383);
-        assert!(parse("x", &[0xF8]).is_none());
-        assert!(parse("x", &[0xB0, 7]).is_none());
+        assert_eq!(parse(&[0xE0, 0x7F, 0x7F]).unwrap().value, 16383);
+        assert!(parse(&[0xF8]).is_none());
+        assert!(parse(&[0xB0, 7]).is_none());
     }
 }

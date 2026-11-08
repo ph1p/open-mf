@@ -11,9 +11,8 @@ import { createStore } from "./store";
 export type UpdateState =
   | { kind: "idle" }
   | { kind: "checking" }
-  | { kind: "available"; version: string; notes: string }
-  | { kind: "downloading"; version: string; progress: number | null }
-  | { kind: "error"; message: string };
+  | { kind: "available"; version: string }
+  | { kind: "downloading"; version: string; progress: number | null };
 
 export const updater = createStore<{ current: string | null; state: UpdateState }>({
   current: null,
@@ -37,16 +36,15 @@ export async function checkForUpdates(manual = false) {
       if (manual) toast("Open MF is up to date", { id: "update" });
       return;
     }
-    set({ kind: "available", version: u.version, notes: u.body ?? "" });
+    set({ kind: "available", version: u.version });
     toast(`Open MF ${u.version} is available`, {
       id: "update",
       duration: manual ? 10000 : 15000,
       action: { label: "Update and restart", onClick: () => installUpdate() },
     });
   } catch (e) {
-    const message = String(e);
-    set({ kind: "error", message });
-    if (manual) toast.error(`Couldn't check for updates: ${message}`, { id: "update" });
+    set({ kind: "idle" });
+    if (manual) toast.error(`Couldn't check for updates: ${e}`, { id: "update" });
   }
 }
 
@@ -61,15 +59,16 @@ export async function installUpdate() {
     await u.downloadAndInstall((e) => {
       if (e.event === "Started") total = e.data.contentLength ?? 0;
       if (e.event === "Progress") {
+        const before = total ? Math.floor((got / total) * 100) : 0;
         got += e.data.chunkLength;
-        set({ kind: "downloading", version: u.version, progress: total ? got / total : null });
+        // Whole percents only; chunks arrive far more often than the button can show.
+        if (total && Math.floor((got / total) * 100) !== before) set({ kind: "downloading", version: u.version, progress: got / total });
       }
     });
     await relaunch();
   } catch (e) {
-    const message = String(e);
-    set({ kind: "available", version: u.version, notes: u.body ?? "" });
-    toast.error(`Update failed: ${message}`, { id: "update" });
+    set({ kind: "available", version: u.version });
+    toast.error(`Update failed: ${e}`, { id: "update" });
   }
 }
 

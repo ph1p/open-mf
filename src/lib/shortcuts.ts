@@ -18,9 +18,7 @@ import { setSystemMute, setSystemVolume, sysAudio, type SystemAudio } from "./sy
 // ---------------------------------------------------------------------------------------------
 
 export type Subject =
-  | { kind: "level"; bus: number; chs: number[] }
-  | { kind: "master"; bus: number }
-  | { kind: "trim"; input: number }
+  | LevelTarget
   | { kind: "switch"; control: Control }
   | { kind: "preset"; id: string }
   | { kind: "mix"; bus: number }
@@ -59,7 +57,7 @@ export const VERBS: Record<Subject["kind"], Verb[]> = {
 export const DB_STEPS = [0.5, 1, 2, 3, 6];
 export const PERCENT_STEPS = [2, 5, 10];
 /** "Set to" targets. Mix levels stop at 0 dB, channel levels at +10. */
-export const SET_VALUES: (number | null)[] = [null, -40, -30, -20, -12, -6, -3, 0, 6];
+const SET_VALUES: (number | null)[] = [null, -40, -30, -20, -12, -6, -3, 0, 6];
 
 export function setValuesFor(s: Subject) {
   if (s.kind === "trim") return [-12, -6, 0, 6, 12];
@@ -208,8 +206,10 @@ function keyLabel(code: string): string | null {
 const standalone = (code: string) => /^F\d+$/.test(code) || isMedia(code);
 const isMedia = (code: string) => /^(Audio|Media)/.test(code);
 const codeOf = (keys: string) => keys.slice(keys.lastIndexOf("+") + 1);
+/** Whether the shortcut ends in a media key (volume, play, ...). */
+export const isMediaKeys = (keys: string) => isMedia(codeOf(keys));
 
-export type KeyResult = { keys: string } | { error: string } | null;
+type KeyResult = { keys: string } | { error: string } | null;
 
 /** Turns a keydown into an accelerator. Null while only modifiers are held. */
 export function keysFromEvent(e: KeyboardEvent): KeyResult {
@@ -241,7 +241,7 @@ export function formatKeys(keys: string): string {
 
 const NOTES = ["C", "C♯", "D", "D♯", "E", "F", "F♯", "G", "G♯", "A", "A♯", "B"];
 
-export function formatMidi(m: Midi): string {
+function formatMidi(m: Midi): string {
   const what =
     m.type === "note" ? `Note ${NOTES[m.num % 12]}${Math.floor(m.num / 12) - 1}`
     : m.type === "cc" ? `CC ${m.num}`
@@ -517,12 +517,12 @@ async function followSystem(pos: number) {
 function followTo(sc: Shortcut, pos: number) {
   const s = sc.subject;
   if (s.kind === "system") return void followSystem(pos).catch(() => {});
-  if (s.kind === "level" || s.kind === "master" || s.kind === "trim") follow(s as LevelTarget, pos);
+  if (s.kind === "level" || s.kind === "master" || s.kind === "trim") follow(s, pos);
 }
 
 const run = (sc: Shortcut) => void runShortcut(sc).catch((err) => toast.error(String(err)));
 
-export async function runShortcut(sc: Shortcut) {
+async function runShortcut(sc: Shortcut) {
   fired(sc.id);
   const { subject: s, verb, amount } = sc;
   const needsMixer = s.kind === "level" || s.kind === "master" || s.kind === "trim" || s.kind === "preset" || s.kind === "mix";
@@ -531,10 +531,9 @@ export async function runShortcut(sc: Shortcut) {
     case "level":
     case "master":
     case "trim": {
-      const t = s as LevelTarget;
-      if (verb === "up" || verb === "down") nudge(t, (verb === "up" ? 1 : -1) * (amount ?? 1));
+      if (verb === "up" || verb === "down") nudge(s, (verb === "up" ? 1 : -1) * (amount ?? 1));
       else if (verb === "follow") return;
-      else if (verb === "set") setLevel(t, amount);
+      else if (verb === "set") setLevel(s, amount);
       else if (s.kind === "level" && (verb === "mute" || verb === "solo")) flip(unitOf(s.chs), verb, s.bus);
       return;
     }
@@ -571,7 +570,7 @@ function sync() {
 }
 
 // On a Mac the volume keys aren't key events; the backend's media-key tap handles all media keys.
-const viaTap = (keys: string) => OS === "mac" && isMedia(codeOf(keys));
+const viaTap = (keys: string) => OS === "mac" && isMediaKeys(keys);
 
 async function syncNow() {
   await unregisterAll().catch(() => {});
@@ -616,7 +615,7 @@ async function syncNow() {
 // ---------------------------------------------------------------------------------------------
 
 type MediaKeyEvent = { keys: string; repeat: boolean };
-type MidiEvent = { port: string; kind: Midi["type"]; ch: number; num: number; value: number };
+type MidiEvent = { kind: Midi["type"]; ch: number; num: number; value: number };
 
 function onMediaKey({ keys, repeat }: MediaKeyEvent) {
   if (shortcutUi.get().recording !== null) return capture({ keys });
@@ -652,8 +651,8 @@ let midiStarted = false;
 function startMidi() {
   if (midiStarted) return;
   midiStarted = true;
-  invoke<string[] | null>("midi_start")
-    .then((midiPorts) => patchUi({ midiPorts: midiPorts ?? [] }))
+  invoke<string[]>("midi_start")
+    .then((midiPorts) => patchUi({ midiPorts }))
     .catch(() => patchUi({ midiPorts: [] }));
 }
 

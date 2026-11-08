@@ -13,14 +13,13 @@ import { settings } from "@/lib/settings";
 import { OS } from "@/lib/platform";
 import {
   DB_STEPS, PERCENT_STEPS, STARTER_SETS, VERBS, addSet, addShortcut, allowMediaKeys, closeShortcuts, defaultAmount,
-  deleteShortcut, formatKeys, formatTrigger, hasAmount, hasSet, keysFromEvent, midiOnly, onCapture, openShortcuts,
+  deleteShortcut, formatKeys, formatTrigger, hasAmount, isMediaKeys, hasSet, keysFromEvent, midiOnly, onCapture, openShortcuts,
   setRecording, setValuesFor, shortcutUi, shortcuts, subjectGroups, subjectLabel, updateShortcut, usedBy, verbLabel,
   verbName, type Captured, type Shortcut, type StarterSet, type Subject, type Verb,
 } from "@/lib/shortcuts";
 import { useStore } from "@/lib/store";
-import { cn } from "@/lib/utils";
+import { cn, groupLabel as group } from "@/lib/utils";
 
-const group = "text-[12px] font-semibold tracking-wide text-muted-foreground uppercase";
 const NONE = "inf";
 const enc = (v: number | null) => (v === null ? NONE : String(v));
 const dec = (v: string) => (v === NONE ? null : +v);
@@ -279,9 +278,7 @@ function AddForm() {
 }
 
 function SetCard({ set }: { set: StarterSet }) {
-  // Re-check when shortcuts change.
-  useStore(shortcuts, (s) => s);
-  const added = hasSet(set);
+  const added = useStore(shortcuts, () => hasSet(set));
   const keys = set.items().map((i) => formatKeys(i.keys));
   return (
     <li className="flex items-start gap-3 rounded-lg border bg-card px-3 py-2">
@@ -318,7 +315,7 @@ function StarterSets() {
 
 function MediaKeysBanner() {
   const blocked = useStore(shortcutUi, (s) => s.mediaBlocked);
-  const usesMedia = useStore(shortcuts, (l) => l.some((x) => /\+?(Audio|Media)\w+$/.test(x.keys)));
+  const usesMedia = useStore(shortcuts, (l) => l.some((x) => isMediaKeys(x.keys)));
   if (OS !== "mac" || !blocked || !usesMedia) return null;
   return (
     <div className="flex flex-col gap-2 rounded-lg border border-amber-500/40 bg-amber-500/10 p-3 text-[13px]">

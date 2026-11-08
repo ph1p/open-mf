@@ -11,8 +11,8 @@ import { LED_LEVELS } from "@/lib/device";
 import { checkForUpdates, updater } from "@/lib/updater";
 import { CLIP_OPTIONS, PEAK_OPTIONS, WARN_OPTIONS, settings, updateSettings } from "@/lib/settings";
 import { useStore } from "@/lib/store";
+import { groupLabel as group } from "@/lib/utils";
 
-const group = "text-[12px] font-semibold tracking-wide text-muted-foreground uppercase";
 
 function Row({ label, children }: { label: string; children: React.ReactNode }) {
   return (

@@ -6,7 +6,7 @@ import {
 } from "./device";
 import { diff, loadUserPresets, snapshot, storeUserPresets, type PresetData, type UserPreset } from "./presets";
 import { settings, updateSettings } from "./settings";
-import { TAPERS, toDb } from "./taper";
+import { TAPERS, quantizeTrim, stepDb, toDb } from "./taper";
 import { createStore } from "./store";
 
 // ---------------------------------------------------------------------------------------------
@@ -80,9 +80,9 @@ export function unitsOf(m: Mixer, chans: number[], pairs: boolean): Unit[] {
   for (let i = 0; i < chans.length; i++) {
     const ch = chans[i];
     if (pairs && pairStart(m, ch) && chans[i + 1] === ch + 1) {
-      out.push({ key: `${ch}+${ch + 1}`, chs: [ch, ch + 1], defaultName: `${CHANNELS[ch]}–${CHANNELS[ch + 1].split(" ")[1]}` });
+      out.push(unitOf([ch, ch + 1]));
       i++;
-    } else out.push({ key: `${ch}`, chs: [ch], defaultName: CHANNELS[ch] });
+    } else out.push(unitOf([ch]));
   }
   return out;
 }
@@ -374,12 +374,10 @@ export function moveTrim(i: number, db: number) {
 }
 
 /** Typed value from a dB readout: one undo step. */
-export function typeLevel(u: Unit, db: number | null) {
-  const b = busOf();
+export function typeLevel(u: Unit, db: number | null, b = busOf()) {
   record(`${nameOf(u)} ${fmtDb(db)}`, () => writeLevels(b, u.chs, db));
 }
-export function typeMaster(db: number | null) {
-  const b = busOf();
+export function typeMaster(db: number | null, b = busOf()) {
   record(`Mix for ${MIXES[b].name} ${fmtDb(db)}`, () => writeMaster(b, db));
 }
 
@@ -527,12 +525,6 @@ export function unitOf(chs: number[]): Unit {
 }
 
 /** One step like the fader's wheel: up from −∞ starts just above the floor. */
-function stepDb(cur: number | null, delta: number, min: number, max: number): number | null {
-  if (cur === null) return delta > 0 ? Math.min(max, -60 + delta) : null;
-  const next = Math.round((cur + delta) * 2) / 2;
-  if (next <= -60 && min <= -60) return null;
-  return Math.max(min, Math.min(max, next));
-}
 
 export type LevelTarget = { kind: "level"; bus: number; chs: number[] } | { kind: "master"; bus: number } | { kind: "trim"; input: number };
 
@@ -543,27 +535,25 @@ function levelOf(m: Mixer, t: LevelTarget): number | null {
 }
 
 /** Grouped like a fader drag: repeated presses make one undo step. Returns the new value. */
-export function nudge(t: LevelTarget, delta: number): number | null | undefined {
-  const m = app.get().mixer;
-  if (!m) return undefined;
-  if (t.kind === "trim") {
-    const db = stepDb(m.trimDb[t.input], delta, -24, 24) ?? -24;
-    moveTrim(t.input, db);
-    return db;
-  }
-  const db = stepDb(levelOf(m, t), delta, -60, t.kind === "master" ? 0 : 10);
-  if (t.kind === "level") moveLevel(unitOf(t.chs), db, t.bus);
+/** Moves a level like dragging its control: one undo step per gesture. */
+function moveTarget(t: LevelTarget, db: number | null) {
+  if (t.kind === "trim") moveTrim(t.input, db ?? -24);
+  else if (t.kind === "level") moveLevel(unitOf(t.chs), db, t.bus);
   else moveMaster(db, t.bus);
-  return db;
+}
+
+export function nudge(t: LevelTarget, delta: number) {
+  const m = app.get().mixer;
+  if (!m) return;
+  moveTarget(t, t.kind === "trim" ? stepDb(levelOf(m, t), delta, -24, 24) : stepDb(levelOf(m, t), delta, -60, t.kind === "master" ? 0 : 10));
 }
 
 /** Where a "set to" shortcut came from, so pressing it again goes back (e.g. dim and undim). */
 const setFrom = new Map<string, number | null>();
 
-/** Sets a level. Pressing again while it is still there restores the level before. Returns the new value. */
-export function setLevel(t: LevelTarget, value: number | null): number | null | undefined {
+export function setLevel(t: LevelTarget, value: number | null) {
   const m = app.get().mixer;
-  if (!m) return undefined;
+  if (!m) return;
   const id = JSON.stringify(t);
   const cur = levelOf(m, t);
   const at = cur === value || (cur !== null && value !== null && Math.abs(cur - value) < 0.05);
@@ -572,32 +562,21 @@ export function setLevel(t: LevelTarget, value: number | null): number | null | 
     db = setFrom.get(id)!;
     setFrom.delete(id);
   } else if (!at) setFrom.set(id, cur);
-  else return cur;
+  else return;
   if (t.kind === "trim") {
     const v = db ?? 0;
     record(`Trim ${t.input + 3} ${fmtDb(v)}`, () => writeTrim(t.input, v));
-  } else if (t.kind === "level") {
-    const u = unitOf(t.chs);
-    record(`${nameOf(u)} ${fmtDb(db)}`, () => writeLevels(t.bus, u.chs, db));
-  } else record(`Mix for ${MIXES[t.bus].name} ${fmtDb(db)}`, () => writeMaster(t.bus, db));
-  return db;
+  } else if (t.kind === "level") typeLevel(unitOf(t.chs), db, t.bus);
+  else typeMaster(db, t.bus);
 }
 
 /** Puts a level where a hardware knob or fader is, 0..1 along the same taper as the on-screen fader. */
-export function follow(t: LevelTarget, pos: number): number | null | undefined {
+export function follow(t: LevelTarget, pos: number) {
   const m = app.get().mixer;
-  if (!m) return undefined;
-  if (t.kind === "trim") {
-    const db = Math.round((pos * 48 - 24) * 2) / 2;
-    if (m.trimDb[t.input] !== db) moveTrim(t.input, db);
-    return db;
-  }
+  if (!m) return;
   const max = t.kind === "master" ? 0 : 10;
-  const db = toDb(TAPERS[max], max, pos);
-  if (levelOf(m, t) === db) return db;
-  if (t.kind === "level") moveLevel(unitOf(t.chs), db, t.bus);
-  else moveMaster(db, t.bus);
-  return db;
+  const db = t.kind === "trim" ? quantizeTrim(pos * 48 - 24) : toDb(TAPERS[max], max, pos);
+  if (levelOf(m, t) !== db) moveTarget(t, db);
 }
 
 // ---------------------------------------------------------------------------------------------

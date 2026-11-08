@@ -18,7 +18,8 @@ for (const f of walk(dir)) {
 }
 const files = walk(dir);
 
-const base = `https://github.com/ph1p/open-mf/releases/download/v${version}`;
+const repo = process.env.GITHUB_REPOSITORY ?? "ph1p/open-mf";
+const base = `https://github.com/${repo}/releases/download/v${version}`;
 const entry = (re) => {
   const file = files.find((f) => re.test(basename(f)) && files.includes(`${f}.sig`));
   if (!file) throw new Error(`no signed bundle matching ${re} in ${dir}`);
@@ -29,7 +30,7 @@ const entry = (re) => {
 const mac = entry(/\.app\.tar\.gz$/);
 const manifest = {
   version,
-  notes: `See https://github.com/ph1p/open-mf/releases/tag/v${version}`,
+  notes: `See https://github.com/${repo}/releases/tag/v${version}`,
   pub_date: new Date().toISOString(),
   platforms: {
     "darwin-aarch64": mac,

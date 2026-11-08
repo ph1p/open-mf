@@ -6,6 +6,17 @@ export const TAPERS: Record<0 | 10, [number, number][]> = {
   0: [[0.05, -60], [0.33, -30], [0.66, -10], [1, 0]],
 };
 
+/** One fader step (wheel, arrow keys, shortcuts). Rounds to 0.5 dB; at or below -60 is -inf. */
+export function stepDb(cur: number | null, delta: number, min: number, max: number): number | null {
+  if (cur === null) return delta > 0 ? Math.min(max, -60 + delta) : null;
+  const next = Math.round((cur + delta) * 2) / 2;
+  if (next <= -60 && min <= -60) return null;
+  return Math.max(min, Math.min(max, next));
+}
+
+/** Trim rounds to 0.5 dB and snaps to 0 close by. */
+export const quantizeTrim = (v: number) => (Math.abs(v) < 0.75 ? 0 : Math.round(v * 2) / 2);
+
 export function toT(taper: [number, number][], max: number, db: number | null): number {
   if (db === null) return taper[0][0];
   const d = Math.max(-60, Math.min(max, db));
