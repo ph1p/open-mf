@@ -1,4 +1,5 @@
 import { getVersion } from "@tauri-apps/api/app";
+import { listen } from "@tauri-apps/api/event";
 import { relaunch } from "@tauri-apps/plugin-process";
 import { check, type Update } from "@tauri-apps/plugin-updater";
 import { toast } from "sonner";
@@ -77,12 +78,16 @@ const EVERY = 6 * 60 * 60 * 1000;
 /** Checks shortly after launch and then every few hours. Release builds only. */
 export function startUpdater() {
   getVersion().then((current) => updater.set((u) => ({ ...u, current })), () => {});
-  if (!import.meta.env.PROD) return () => {};
+  // "Check for Updates…" in the macOS app menu.
+  const menu = listen("check-updates", () => checkForUpdates(true));
+  const unlisten = () => void menu.then((off) => off(), () => {});
+  if (!import.meta.env.PROD) return unlisten;
   const first = setTimeout(() => checkForUpdates(), 5000);
   const again = setInterval(() => {
     if (updater.get().state.kind !== "available") checkForUpdates();
   }, EVERY);
   return () => {
+    unlisten();
     clearTimeout(first);
     clearInterval(again);
   };

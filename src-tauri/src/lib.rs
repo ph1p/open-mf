@@ -9,6 +9,7 @@ mod usb;
 use device::Control;
 use serde::Serialize;
 use std::collections::BTreeMap;
+use tauri::Emitter;
 
 #[derive(Serialize)]
 #[serde(rename_all = "camelCase")]
@@ -154,6 +155,19 @@ fn midi_start(app: tauri::AppHandle) -> Vec<String> {
     }
 }
 
+/// The standard macOS menu with "Check for Updates…" under "About Open MF".
+#[cfg(target_os = "macos")]
+fn add_update_menu(app: &tauri::App) -> tauri::Result<()> {
+    use tauri::menu::{Menu, MenuItem};
+    let menu = Menu::default(app.handle())?;
+    if let Some(app_menu) = menu.items()?.first().and_then(|i| i.as_submenu()) {
+        let item = MenuItem::with_id(app, "check-updates", "Check for Updates…", true, None::<&str>)?;
+        app_menu.insert(&item, 1)?;
+    }
+    app.set_menu(menu)?;
+    Ok(())
+}
+
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     // Remember size, position and maximized state. Decorations stay as configured per OS.
@@ -176,7 +190,14 @@ pub fn run() {
     builder
         .setup(|app| {
             mediakeys::init(app.handle().clone());
+            #[cfg(target_os = "macos")]
+            add_update_menu(app)?;
             Ok(())
+        })
+        .on_menu_event(|app, event| {
+            if event.id() == "check-updates" {
+                let _ = app.emit("check-updates", ());
+            }
         })
         .invoke_handler(tauri::generate_handler![
             status,
