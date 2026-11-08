@@ -8,6 +8,7 @@ import { Switch } from "@/components/ui/switch";
 import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
 import { app, setLed } from "@/lib/app";
 import { LED_LEVELS } from "@/lib/device";
+import { checkForUpdates, updater } from "@/lib/updater";
 import { CLIP_OPTIONS, PEAK_OPTIONS, WARN_OPTIONS, settings, updateSettings } from "@/lib/settings";
 import { useStore } from "@/lib/store";
 
@@ -19,6 +20,37 @@ function Row({ label, children }: { label: string; children: React.ReactNode }) 
       <Label className="text-[14px] font-normal whitespace-nowrap">{label}</Label>
       {children}
     </div>
+  );
+}
+
+function About() {
+  const { current, state } = useStore(updater, (u) => u);
+  const label =
+    state.kind === "checking"
+      ? "Checking…"
+      : state.kind === "available"
+        ? `${state.version} is available`
+        : state.kind === "downloading"
+          ? `Downloading ${state.version}…`
+          : null;
+  return (
+    <>
+      <span className={`mt-1 ${group}`}>Open MF</span>
+      <div className="flex items-center justify-between gap-3">
+        <span className="text-[14px] text-muted-foreground">
+          {current ? `Version ${current}` : "Version"}
+          {label && <span className="block text-[12px]">{label}</span>}
+        </span>
+        <Button
+          variant="outline"
+          size="sm"
+          disabled={state.kind === "checking" || state.kind === "downloading"}
+          onClick={() => checkForUpdates(true)}
+        >
+          Check for updates
+        </Button>
+      </div>
+    </>
   );
 }
 
@@ -116,6 +148,7 @@ export function LedPopover() {
             </ToggleGroupItem>
           ))}
         </ToggleGroup>
+        <About />
       </PopoverContent>
     </Popover>
   );

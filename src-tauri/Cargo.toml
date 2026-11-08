@@ -37,3 +37,5 @@ strip = true
 [target.'cfg(not(any(target_os = "android", target_os = "ios")))'.dependencies]
 tauri-plugin-global-shortcut = "2"
 midir = "0.11"
+tauri-plugin-updater = "2"
+tauri-plugin-process = "2"

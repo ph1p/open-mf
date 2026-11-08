@@ -15,6 +15,7 @@ import { useMediaQuery } from "@/lib/hooks";
 import { OS } from "@/lib/platform";
 import { settings } from "@/lib/settings";
 import { startShortcuts } from "@/lib/shortcuts";
+import { startUpdater } from "@/lib/updater";
 import { useStore } from "@/lib/store";
 
 function MixerView({ mixer }: { mixer: Mixer }) {
@@ -135,6 +136,7 @@ function Empty({ title, children }: { title: string; children: React.ReactNode }
 export default function App() {
   useEffect(() => startApp(), []);
   useEffect(() => startShortcuts(), []);
+  useEffect(() => startUpdater(), []);
   const stat = useStore(app, (s) => s.stat);
   const mixer = useStore(app, (s) => s.mixer);
   const wide = useMediaQuery("(min-width: 960px)");

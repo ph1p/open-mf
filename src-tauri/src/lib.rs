@@ -169,6 +169,9 @@ pub fn run() {
     // User-defined shortcuts that work while another app is in front.
     #[cfg(desktop)]
     let builder = builder.plugin(tauri_plugin_global_shortcut::Builder::new().build());
+    // Updates from GitHub releases (signed latest.json) and the relaunch after installing one.
+    #[cfg(desktop)]
+    let builder = builder.plugin(tauri_plugin_updater::Builder::new().build()).plugin(tauri_plugin_process::init());
 
     builder
         .setup(|app| {

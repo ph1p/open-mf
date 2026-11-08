@@ -18,6 +18,15 @@
         "message": "chore(release): ${nextRelease.version} [skip ci]"
       }
     ],
-    ["@semantic-release/github", { "assets": [{ "path": "bundles/**/*.{dmg,msi,exe,deb,AppImage}" }] }]
+    [
+      "@semantic-release/github",
+      {
+        "assets": [
+          { "path": "bundles/**/*.{dmg,msi,exe,deb,AppImage}" },
+          { "path": "bundles/**/*.app.tar.gz" },
+          { "path": "bundles/latest.json" }
+        ]
+      }
+    ]
   ]
 }

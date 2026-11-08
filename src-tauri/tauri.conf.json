@@ -35,5 +35,16 @@
       "icons/icon.icns",
       "icons/icon.ico"
     ]
+  },
+  "plugins": {
+    "updater": {
+      "pubkey": "dW50cnVzdGVkIGNvbW1lbnQ6IG1pbmlzaWduIHB1YmxpYyBrZXk6IDlDNjM3MTBCODIxRTZCQUIKUldTcmF4NkNDM0ZqbkhOc1JtU1Nnazg2aUoyVjJaNFg0N3RUR2h1RGNjUVhaR0E0Y3NNNzJYd1QK",
+      "endpoints": [
+        "https://github.com/ph1p/open-mf/releases/latest/download/latest.json"
+      ],
+      "windows": {
+        "installMode": "passive"
+      }
+    }
   }
 }

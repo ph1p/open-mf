@@ -1,6 +1,6 @@
 import { useEffect, useState, type ReactNode } from "react";
 import { getCurrentWindow } from "@tauri-apps/api/window";
-import { PanelRightIcon, Redo2Icon, Undo2Icon } from "lucide-react";
+import { DownloadIcon, PanelRightIcon, Redo2Icon, Undo2Icon } from "lucide-react";
 import { Hint } from "@/components/Hint";
 import { PresetMenu } from "@/components/PresetMenu";
 import { LedPopover, PrefsPopover } from "@/components/PrefsPopover";
@@ -9,6 +9,7 @@ import { Button } from "@/components/ui/button";
 import { app, redo, undo } from "@/lib/app";
 import { OS } from "@/lib/platform";
 import { useStore } from "@/lib/store";
+import { installUpdate, updater } from "@/lib/updater";
 import { cn } from "@/lib/utils";
 
 const MOD = OS === "mac" ? "⌘" : "Ctrl+";
@@ -123,6 +124,22 @@ function WindowButtons() {
  * leave room for them. Windows and Linux are undecorated and get our own buttons.
  * `data-tauri-drag-region` only applies to the element that carries it, not children.
  */
+/** Shows up once a newer release is found. */
+function UpdateButton() {
+  const state = useStore(updater, (u) => u.state);
+  if (state.kind !== "available" && state.kind !== "downloading") return null;
+  const downloading = state.kind === "downloading";
+  const pct = downloading && state.progress !== null ? ` ${Math.round(state.progress * 100)}%` : "";
+  return (
+    <Hint text={downloading ? "Open MF restarts when done" : `Install Open MF ${state.version} and restart`} side="bottom">
+      <Button size="sm" className="h-7 gap-1.5 px-2.5 text-[13px]" disabled={downloading} onClick={() => installUpdate()}>
+        <DownloadIcon className="size-3.5" />
+        {downloading ? `Updating…${pct}` : "Update"}
+      </Button>
+    </Hint>
+  );
+}
+
 export function TitleBar({ sidebarToggle }: { sidebarToggle?: ReactNode }) {
   const hasMixer = useStore(app, (s) => s.mixer !== null);
   return (
@@ -150,6 +167,7 @@ export function TitleBar({ sidebarToggle }: { sidebarToggle?: ReactNode }) {
       )}
       <span data-tauri-drag-region className="h-full flex-1" />
       {hasMixer && <UndoRedo />}
+      <UpdateButton />
       <LedPopover />
       <ShortcutsButton />
       <PrefsPopover />
