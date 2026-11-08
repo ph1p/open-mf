@@ -6,6 +6,7 @@ import {
 } from "./device";
 import { diff, loadUserPresets, snapshot, storeUserPresets, type PresetData, type UserPreset } from "./presets";
 import { settings, updateSettings } from "./settings";
+import { TAPERS, toDb } from "./taper";
 import { createStore } from "./store";
 
 // ---------------------------------------------------------------------------------------------
@@ -353,8 +354,7 @@ const busOf = () => app.get().bus;
 const strip = (b: number, ch: number) => app.get().mixer!.buses[b].strips[ch];
 const sideLabel = (u: Unit, side: number) => (u.chs.length > 1 ? `${nameOf(u)} ${side ? "R" : "L"}` : nameOf(u));
 
-export function moveLevel(u: Unit, db: number | null) {
-  const b = busOf();
+export function moveLevel(u: Unit, db: number | null, b = busOf()) {
   track(`level:${b}:${u.chs}`, `${nameOf(u)} ${fmtDb(db)}`);
   writeLevels(b, u.chs, db);
 }
@@ -364,8 +364,7 @@ export function movePan(u: Unit, side: number, v: number) {
   track(`pan:${b}:${ch}`, `${sideLabel(u, side)} pan ${fmtPan(v)}`);
   writePan(b, ch, v);
 }
-export function moveMaster(db: number | null) {
-  const b = busOf();
+export function moveMaster(db: number | null, b = busOf()) {
   track(`master:${b}`, `Mix for ${MIXES[b].name} ${fmtDb(db)}`);
   writeMaster(b, db);
 }
@@ -434,8 +433,7 @@ export function setTrimDefault(i: number) {
   setDefault([trimKey(i)], db, `Trim ${i + 3} ${fmtDb(db)}`);
 }
 
-export function flip(u: Unit, what: "mute" | "solo") {
-  const b = busOf();
+export function flip(u: Unit, what: "mute" | "solo", b = busOf()) {
   const on = !u.chs.every((ch) => strip(b, ch)[what]);
   record(`${on ? "" : "Un"}${what === "mute" ? (on ? "Muted" : "muted") : on ? "Soloed" : "soloed"} ${nameOf(u)}`, () =>
     writeFlag(b, u.chs, what, on),
@@ -516,6 +514,91 @@ export const setBus = (bus: number) => {
 export const setFocusUnit = (key: string | null) => {
   if (app.get().focusUnit !== key) patch({ focusUnit: key });
 };
+
+// ---------------------------------------------------------------------------------------------
+// Shortcut edits: act on a fixed mix, not the one shown
+// ---------------------------------------------------------------------------------------------
+
+/** The unit for channels stored in a shortcut. Its key matches `unitsOf`, so custom names apply. */
+export function unitOf(chs: number[]): Unit {
+  if (chs.length === 1) return { key: `${chs[0]}`, chs, defaultName: CHANNELS[chs[0]] };
+  const [a, b] = chs;
+  return { key: `${a}+${b}`, chs, defaultName: `${CHANNELS[a]}–${CHANNELS[b].split(" ")[1]}` };
+}
+
+/** One step like the fader's wheel: up from −∞ starts just above the floor. */
+function stepDb(cur: number | null, delta: number, min: number, max: number): number | null {
+  if (cur === null) return delta > 0 ? Math.min(max, -60 + delta) : null;
+  const next = Math.round((cur + delta) * 2) / 2;
+  if (next <= -60 && min <= -60) return null;
+  return Math.max(min, Math.min(max, next));
+}
+
+export type LevelTarget = { kind: "level"; bus: number; chs: number[] } | { kind: "master"; bus: number } | { kind: "trim"; input: number };
+
+function levelOf(m: Mixer, t: LevelTarget): number | null {
+  if (t.kind === "level") return m.buses[t.bus].strips[t.chs[0]].levelDb;
+  if (t.kind === "master") return m.buses[t.bus].masterDb;
+  return m.trimDb[t.input];
+}
+
+/** Grouped like a fader drag: repeated presses make one undo step. Returns the new value. */
+export function nudge(t: LevelTarget, delta: number): number | null | undefined {
+  const m = app.get().mixer;
+  if (!m) return undefined;
+  if (t.kind === "trim") {
+    const db = stepDb(m.trimDb[t.input], delta, -24, 24) ?? -24;
+    moveTrim(t.input, db);
+    return db;
+  }
+  const db = stepDb(levelOf(m, t), delta, -60, t.kind === "master" ? 0 : 10);
+  if (t.kind === "level") moveLevel(unitOf(t.chs), db, t.bus);
+  else moveMaster(db, t.bus);
+  return db;
+}
+
+/** Where a "set to" shortcut came from, so pressing it again goes back (e.g. dim and undim). */
+const setFrom = new Map<string, number | null>();
+
+/** Sets a level. Pressing again while it is still there restores the level before. Returns the new value. */
+export function setLevel(t: LevelTarget, value: number | null): number | null | undefined {
+  const m = app.get().mixer;
+  if (!m) return undefined;
+  const id = JSON.stringify(t);
+  const cur = levelOf(m, t);
+  const at = cur === value || (cur !== null && value !== null && Math.abs(cur - value) < 0.05);
+  let db = value;
+  if (at && setFrom.has(id)) {
+    db = setFrom.get(id)!;
+    setFrom.delete(id);
+  } else if (!at) setFrom.set(id, cur);
+  else return cur;
+  if (t.kind === "trim") {
+    const v = db ?? 0;
+    record(`Trim ${t.input + 3} ${fmtDb(v)}`, () => writeTrim(t.input, v));
+  } else if (t.kind === "level") {
+    const u = unitOf(t.chs);
+    record(`${nameOf(u)} ${fmtDb(db)}`, () => writeLevels(t.bus, u.chs, db));
+  } else record(`Mix for ${MIXES[t.bus].name} ${fmtDb(db)}`, () => writeMaster(t.bus, db));
+  return db;
+}
+
+/** Puts a level where a hardware knob or fader is, 0..1 along the same taper as the on-screen fader. */
+export function follow(t: LevelTarget, pos: number): number | null | undefined {
+  const m = app.get().mixer;
+  if (!m) return undefined;
+  if (t.kind === "trim") {
+    const db = Math.round((pos * 48 - 24) * 2) / 2;
+    if (m.trimDb[t.input] !== db) moveTrim(t.input, db);
+    return db;
+  }
+  const max = t.kind === "master" ? 0 : 10;
+  const db = toDb(TAPERS[max], max, pos);
+  if (levelOf(m, t) === db) return db;
+  if (t.kind === "level") moveLevel(unitOf(t.chs), db, t.bus);
+  else moveMaster(db, t.bus);
+  return db;
+}
 
 // ---------------------------------------------------------------------------------------------
 // Batches: presets and copying mixes

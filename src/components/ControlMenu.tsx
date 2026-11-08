@@ -1,8 +1,10 @@
 import type { ReactNode } from "react";
+import { KeyboardIcon } from "lucide-react";
 import {
   ContextMenu, ContextMenuContent, ContextMenuItem, ContextMenuSeparator, ContextMenuShortcut, ContextMenuTrigger,
 } from "@/components/ui/context-menu";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
+import { openShortcuts, type Subject } from "@/lib/shortcuts";
 
 export const RESET_HINT = "Double-click / ⌥-click / ⌫: reset";
 
@@ -17,6 +19,7 @@ export function ControlMenu({
   onReset,
   onSetDefault,
   onResetStrip,
+  shortcut,
 }: {
   children: ReactNode;
   className?: string;
@@ -25,6 +28,8 @@ export function ControlMenu({
   onReset: () => void;
   onSetDefault: () => void;
   onResetStrip?: () => void;
+  /** Offers "Add shortcut…" for this control. */
+  shortcut?: Subject;
 }) {
   return (
     <ContextMenu>
@@ -48,6 +53,15 @@ export function ControlMenu({
             <ContextMenuItem onSelect={onResetStrip}>
               Reset whole strip
               <ContextMenuShortcut>R</ContextMenuShortcut>
+            </ContextMenuItem>
+          </>
+        )}
+        {shortcut && (
+          <>
+            <ContextMenuSeparator />
+            <ContextMenuItem onSelect={() => openShortcuts(shortcut)}>
+              <KeyboardIcon className="size-4" />
+              Add shortcut…
             </ContextMenuItem>
           </>
         )}

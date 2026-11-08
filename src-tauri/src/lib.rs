@@ -1,4 +1,7 @@
 mod device;
+mod mediakeys;
+#[cfg(desktop)]
+mod midi;
 mod mixer;
 mod sysaudio;
 mod usb;
@@ -124,6 +127,33 @@ async fn set_app_volume(id: String, volume: f32) -> Result<(), String> {
         .map_err(|e| e.to_string())?
 }
 
+/// Binds media keys (macOS). Err("permission") until Open MF has Accessibility access.
+#[tauri::command]
+fn media_keys_set(keys: Vec<String>, learn: bool) -> Result<(), String> {
+    mediakeys::set(keys, learn)
+}
+
+/// Whether media keys can be watched. `prompt` opens the system dialog that leads to Settings.
+#[tauri::command]
+fn media_keys_trusted(prompt: bool) -> bool {
+    mediakeys::trusted(prompt)
+}
+
+/// Starts listening to MIDI inputs. Returns the connected ones so far.
+#[tauri::command]
+fn midi_start(app: tauri::AppHandle) -> Vec<String> {
+    #[cfg(desktop)]
+    {
+        midi::start(app);
+        midi::ports()
+    }
+    #[cfg(not(desktop))]
+    {
+        let _ = app;
+        Vec::new()
+    }
+}
+
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     // Remember size, position and maximized state. Decorations stay as configured per OS.
@@ -135,8 +165,16 @@ pub fn run() {
         )
         .build();
 
-    tauri::Builder::default()
-        .plugin(window_state)
+    let builder = tauri::Builder::default().plugin(window_state);
+    // User-defined shortcuts that work while another app is in front.
+    #[cfg(desktop)]
+    let builder = builder.plugin(tauri_plugin_global_shortcut::Builder::new().build());
+
+    builder
+        .setup(|app| {
+            mediakeys::init(app.handle().clone());
+            Ok(())
+        })
         .invoke_handler(tauri::generate_handler![
             status,
             set_switch,
@@ -148,7 +186,10 @@ pub fn run() {
             set_default_output,
             set_system_volume,
             set_system_mute,
-            set_app_volume
+            set_app_volume,
+            media_keys_set,
+            media_keys_trusted,
+            midi_start
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

@@ -88,6 +88,7 @@ export function ChannelStrip({
           onReset={() => resetLevel(u)}
           onSetDefault={() => setLevelDefault(u)}
           onResetStrip={() => resetStrip(u)}
+          shortcut={{ kind: "level", bus, chs: u.chs }}
         >
           <Fader
             value={first.levelDb}

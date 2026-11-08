@@ -154,6 +154,7 @@ export function Inputs() {
                     defaultText={fmtDb(defaultOf(trimKey(i)))}
                     onReset={() => resetTrim(i)}
                     onSetDefault={() => setTrimDefault(i)}
+                    shortcut={{ kind: "trim", input: i }}
                   >
                     <CenterSlider
                       value={mixer.trimDb[i]}

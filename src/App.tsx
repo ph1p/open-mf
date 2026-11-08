@@ -7,12 +7,14 @@ import { AddMenu, MixerToolbar } from "@/components/MixerToolbar";
 import { Inputs, Sidebar } from "@/components/Sidebar";
 import { SystemAudio } from "@/components/SystemAudio";
 import { SidebarToggle, TitleBar } from "@/components/TitleBar";
+import { ShortcutsSheet } from "@/components/ShortcutsSheet";
 import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 import { app, inMix, startApp, unitsOf, type Unit } from "@/lib/app";
 import { INPUT_CHANNELS, USB_CHANNELS, type Mixer } from "@/lib/device";
 import { useMediaQuery } from "@/lib/hooks";
 import { OS } from "@/lib/platform";
 import { settings } from "@/lib/settings";
+import { startShortcuts } from "@/lib/shortcuts";
 import { useStore } from "@/lib/store";
 
 function MixerView({ mixer }: { mixer: Mixer }) {
@@ -132,6 +134,7 @@ function Empty({ title, children }: { title: string; children: React.ReactNode }
 
 export default function App() {
   useEffect(() => startApp(), []);
+  useEffect(() => startShortcuts(), []);
   const stat = useStore(app, (s) => s.stat);
   const mixer = useStore(app, (s) => s.mixer);
   const wide = useMediaQuery("(min-width: 960px)");
@@ -175,6 +178,7 @@ export default function App() {
           </>
         )}
       </div>
+      <ShortcutsSheet />
       {ready && !wide && (
         <Sheet open={sheetOpen} onOpenChange={setSheetOpen}>
           <SheetContent

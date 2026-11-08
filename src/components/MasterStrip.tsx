@@ -31,6 +31,7 @@ export function MasterStrip({ mixer, bus }: { mixer: Mixer; bus: number }) {
           defaultText={fmtDb(defaultOf(masterKey(bus)))}
           onReset={resetMaster}
           onSetDefault={setMasterDefault}
+          shortcut={{ kind: "master", bus }}
         >
           <Fader
             value={db}

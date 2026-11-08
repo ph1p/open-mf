@@ -10,6 +10,14 @@ fn main() {
             }
             b.file(file).compile(lib);
         }
+        let mut b = cc::Build::new();
+        if let Some(ar) = ar {
+            b.archiver(ar);
+        }
+        b.file("csrc/mediakeys_mac.m").flag("-fobjc-arc").compile("mediakeys_mac");
+        println!("cargo:rerun-if-changed=csrc/mediakeys_mac.m");
+        println!("cargo:rustc-link-lib=framework=AppKit");
+        println!("cargo:rustc-link-lib=framework=ApplicationServices");
         println!("cargo:rerun-if-changed=csrc/audio_mac.c");
         println!("cargo:rustc-link-lib=framework=CoreAudio");
         println!("cargo:rerun-if-changed=csrc/usb_mac.c");

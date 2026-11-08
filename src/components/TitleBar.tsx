@@ -4,6 +4,7 @@ import { PanelRightIcon, Redo2Icon, Undo2Icon } from "lucide-react";
 import { Hint } from "@/components/Hint";
 import { PresetMenu } from "@/components/PresetMenu";
 import { LedPopover, PrefsPopover } from "@/components/PrefsPopover";
+import { ShortcutsButton } from "@/components/ShortcutsSheet";
 import { Button } from "@/components/ui/button";
 import { app, redo, undo } from "@/lib/app";
 import { OS } from "@/lib/platform";
@@ -150,6 +151,7 @@ export function TitleBar({ sidebarToggle }: { sidebarToggle?: ReactNode }) {
       <span data-tauri-drag-region className="h-full flex-1" />
       {hasMixer && <UndoRedo />}
       <LedPopover />
+      <ShortcutsButton />
       <PrefsPopover />
       {sidebarToggle}
       {OS !== "mac" && (
