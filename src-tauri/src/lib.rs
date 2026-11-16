@@ -5,11 +5,12 @@ mod midi;
 mod mixer;
 mod sysaudio;
 mod usb;
+mod winstate;
 
 use device::Control;
 use serde::Serialize;
 use std::collections::BTreeMap;
-use tauri::Emitter;
+use tauri::{Emitter, Manager};
 
 #[derive(Serialize)]
 #[serde(rename_all = "camelCase")]
@@ -170,16 +171,7 @@ fn add_update_menu(app: &tauri::App) -> tauri::Result<()> {
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
-    // Remember size, position and maximized state. Decorations stay as configured per OS.
-    let window_state = tauri_plugin_window_state::Builder::default()
-        .with_state_flags(
-            tauri_plugin_window_state::StateFlags::SIZE
-                | tauri_plugin_window_state::StateFlags::POSITION
-                | tauri_plugin_window_state::StateFlags::MAXIMIZED,
-        )
-        .build();
-
-    let builder = tauri::Builder::default().plugin(window_state);
+    let builder = tauri::Builder::default();
     // User-defined shortcuts that work while another app is in front.
     #[cfg(desktop)]
     let builder = builder.plugin(tauri_plugin_global_shortcut::Builder::new().build());
@@ -190,6 +182,9 @@ pub fn run() {
     builder
         .setup(|app| {
             mediakeys::init(app.handle().clone());
+            if let Some(window) = app.get_webview_window("main") {
+                winstate::init(&window);
+            }
             #[cfg(target_os = "macos")]
             add_update_menu(app)?;
             Ok(())
@@ -215,6 +210,11 @@ pub fn run() {
             media_keys_trusted,
             midi_start
         ])
-        .run(tauri::generate_context!())
-        .expect("error while running tauri application");
+        .build(tauri::generate_context!())
+        .expect("error while running tauri application")
+        .run(|app, event| {
+            if let tauri::RunEvent::Exit = event {
+                winstate::save(app);
+            }
+        });
 }
