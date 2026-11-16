@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import { ChannelStrip } from "@/components/ChannelStrip";
 import { MasterStrip } from "@/components/MasterStrip";
 import { PlusIcon } from "lucide-react";
@@ -34,17 +34,34 @@ function MixerView({ mixer }: { mixer: Mixer }) {
   const shownUsb = showAll ? usb : usb.filter(isIn);
   const missing = [...inputs, ...usb].filter((u) => !isIn(u));
 
+  // The strips fill the height the window leaves them: the toolbar wraps and banners come and go,
+  // so the room is measured, not derived from the viewport. clientHeight leaves out a scrollbar.
+  const host = useRef<HTMLDivElement>(null);
+  const scroller = useRef<HTMLDivElement>(null);
+  useLayoutEffect(() => {
+    const el = scroller.current!;
+    const sync = () => host.current?.style.setProperty("--mixer-h", `${el.clientHeight}px`);
+    sync();
+    const ro = new ResizeObserver(sync);
+    ro.observe(el);
+    return () => ro.disconnect();
+  }, []);
+
   const strip = (u: Unit) => (
     <ChannelStrip key={u.key} unit={u} bus={bus} strips={strips} anySolo={anySolo} focused={focusUnit === u.key} />
   );
 
   return (
     // One fader height for every strip and the master, so 0 dB lines up across the mixer.
-    <div className="flex min-h-0 min-w-0 flex-1 flex-col [--fader-h:clamp(200px,calc(100dvh-390px),420px)]">
+    // 220px is everything in a strip column that is not the fader: padding, group title, name, readout, pan, M/S.
+    <div
+      ref={host}
+      className="flex min-h-0 min-w-0 flex-1 flex-col [--fader-h:clamp(140px,calc(var(--mixer-h,640px)-220px),640px)]"
+    >
       <MixerToolbar mixer={mixer} bus={bus} missing={missing} />
       <div className="flex min-h-0 flex-1">
         {/* Native overflow: Radix ScrollArea wraps content in display:table, which breaks the height stretch. */}
-        <div className="min-w-0 flex-1 overflow-auto">
+        <div ref={scroller} className="min-w-0 flex-1 overflow-auto">
           <div className="flex w-max min-w-full items-stretch gap-2 p-3">
             {shownIn.length > 0 && (
               <StripGroup title="Inputs" dot="bg-sky-500" hint="Mics, instruments and line gear plugged into the front and back of the MiniFuse.">
