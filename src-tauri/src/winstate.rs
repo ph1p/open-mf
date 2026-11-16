@@ -64,7 +64,8 @@ pub fn init(window: &WebviewWindow) {
     if let Some(s) = saved {
         // Only go back to a spot that is still on a display; otherwise the OS places the window.
         let on_screen = window.available_monitors().unwrap_or_default().iter().any(|m| {
-            let (p, size) = (m.position().to_logical::<f64>(m.scale_factor()), m.size().to_logical::<f64>(m.scale_factor()));
+            let (p, size) =
+                (m.position().to_logical::<f64>(m.scale_factor()), m.size().to_logical::<f64>(m.scale_factor()));
             // The title bar must be reachable: its left part inside the display.
             (p.x..p.x + size.width - 80.0).contains(&s.x) && (p.y..p.y + size.height - 40.0).contains(&s.y)
         });
