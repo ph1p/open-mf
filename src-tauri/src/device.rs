@@ -11,6 +11,7 @@
 //! write selectors come from mf-cli only and are not verified here; reads may not work.
 
 use std::sync::Mutex;
+use std::sync::atomic::{AtomicU32, Ordering};
 
 use serde::Serialize;
 
@@ -61,6 +62,14 @@ impl Model {
 /// Product id of the attached device, once found. Cleared when it disappears.
 static CURRENT: Mutex<Option<u16>> = Mutex::new(None);
 
+/// Bumped each time a device is (re)detected, so callers can redo per-connection setup.
+static CONNECTION: AtomicU32 = AtomicU32::new(0);
+
+/// Id of the current connection; changes after every unplug/replug.
+pub fn connection() -> u32 {
+    CONNECTION.load(Ordering::Relaxed)
+}
+
 fn lock_current() -> std::sync::MutexGuard<'static, Option<u16>> {
     CURRENT.lock().unwrap_or_else(|e| e.into_inner())
 }
@@ -77,6 +86,7 @@ pub fn model() -> Result<Model, UsbError> {
     for (pid, m) in MODELS {
         if usb::present(VID, pid)? {
             *lock_current() = Some(pid);
+            CONNECTION.fetch_add(1, Ordering::Relaxed);
             return Ok(m);
         }
     }

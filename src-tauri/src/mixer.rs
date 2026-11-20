@@ -7,9 +7,11 @@
 //! Gains are signed i16 in 1/256 dB; 0x8000 = off. Pan is not stored: the left and right
 //! crosspoint gains carry fader + pan with a sin/cos law (-3.01 dB per side at center).
 
+use std::sync::atomic::{AtomicU32, Ordering};
+
 use serde::{Deserialize, Serialize};
 
-use crate::device::{read_meters, read_param, write_param};
+use crate::device::{connection, read_meters, read_param, write_param};
 use crate::usb::UsbError;
 
 pub const BUSES: u8 = 3;
@@ -130,8 +132,34 @@ pub struct MixerState {
     pub led_intensity: u16,
 }
 
+/// Connection whose bus masters were last re-sent (0 = none yet).
+static MASTERS_SYNCED: AtomicU32 = AtomicU32::new(0);
+
+/// After power-up the device reports its stored master level, but the DSP does not apply it
+/// until a master write arrives: outputs play too loud until the fader is touched. Re-send
+/// each master once per connection. A 1/256 dB nudge first keeps the firmware from skipping
+/// an unchanged value.
+fn resync_masters(masters: &[u16]) -> Result<(), MixerError> {
+    let conn = connection();
+    if MASTERS_SYNCED.load(Ordering::Relaxed) == conn {
+        return Ok(());
+    }
+    for (bus, &raw) in (0u8..).zip(masters) {
+        let nudge = match raw {
+            OFF => db_to_raw(FADER_MIN_DB),
+            r if r as i16 > -32767 => r.wrapping_sub(1),
+            r => r.wrapping_add(1),
+        };
+        write_param(P_MASTER, bus, nudge)?;
+        write_param(P_MASTER, bus, raw)?;
+    }
+    MASTERS_SYNCED.store(conn, Ordering::Relaxed);
+    Ok(())
+}
+
 pub fn read_state() -> Result<MixerState, MixerError> {
     require_mixer()?;
+    let mut masters = Vec::with_capacity(BUSES as usize);
     let mut buses = Vec::with_capacity(BUSES as usize);
     for bus in 0..BUSES {
         let mut strips = Vec::with_capacity(CHANNELS as usize);
@@ -147,14 +175,17 @@ pub fn read_state() -> Result<MixerState, MixerError> {
             });
         }
         let master = read_param(P_MASTER, bus)?;
+        masters.push(master);
         buses.push(Bus { master_db: level_or_off(raw_to_db(master)), source: read_param(P_SOURCE + bus, 0)?, strips });
     }
-    Ok(MixerState {
+    let state = MixerState {
         buses,
         link34: read_param(P_LINK_34, 0)? != 0,
         trim_db: [raw_to_db(read_param(P_TRIM, 2)?), raw_to_db(read_param(P_TRIM, 3)?)],
         led_intensity: read_param(P_LED_INTENSITY, 0)?,
-    })
+    };
+    resync_masters(&masters)?;
+    Ok(state)
 }
 
 /// Number of meter values: one per channel, then L/R for each of the 3 mix buses.
