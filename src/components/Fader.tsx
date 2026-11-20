@@ -86,17 +86,17 @@ export function Fader({
         e.preventDefault();
       }}
     >
-      <div ref={track} className="absolute inset-y-1.5 left-[9px] w-1.5 overflow-hidden rounded-full bg-muted ring-1 ring-border">
+      <div ref={track} className="absolute inset-y-1.5 left-2.25 w-1.5 overflow-hidden rounded-full bg-muted ring-1 ring-border">
         <div className="absolute inset-x-0 bottom-0 bg-primary/50" style={{ height: `${value === null ? 0 : t * 100}%` }} />
       </div>
       {/* 0 dB notch */}
-      <span className="pointer-events-none absolute left-[5px] h-px w-3.5 bg-foreground/40" style={at(toT(taper, max, 0))} />
+      <span className="pointer-events-none absolute left-1.25 h-px w-3.5 bg-foreground/40" style={at(toT(taper, max, 0))} />
 
       {TICKS[max].map((tk) => (
         <span
           key={tk}
           className={cn(
-            "pointer-events-none absolute left-[27px] -translate-y-1/2 text-[11px] leading-none tabular-nums",
+            "pointer-events-none absolute left-6.75 -translate-y-1/2 text-[11px] leading-none tabular-nums",
             tk === 0 ? "font-semibold text-foreground" : "text-muted-foreground",
           )}
           style={at(toT(taper, max, tk))}
@@ -107,7 +107,7 @@ export function Fader({
 
       <div
         className={cn(
-          "pointer-events-none absolute left-0 flex h-[18px] w-6 -translate-y-1/2 items-center justify-center rounded-[4px] bg-card shadow-md ring-1 ring-border group-focus-visible:ring-ring",
+          "pointer-events-none absolute left-0 flex h-4.5 w-6 -translate-y-1/2 items-center justify-center rounded-lg bg-card shadow-md ring-1 ring-border group-focus-visible:ring-ring",
           value === null && "opacity-70",
         )}
         style={at(t)}

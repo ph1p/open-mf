@@ -86,7 +86,7 @@ function MixerView({ mixer }: { mixer: Mixer }) {
               >
                 <button
                   type="button"
-                  className="flex w-[96px] shrink-0 flex-col items-center justify-center gap-2 rounded-xl border border-dashed p-3 text-center text-[13px] text-muted-foreground transition hover:border-ring/60 hover:bg-card/60 hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none"
+                  className="flex w-24 shrink-0 flex-col items-center justify-center gap-2 rounded-xl border border-dashed p-3 text-center text-[13px] text-muted-foreground transition hover:border-ring/60 hover:bg-card/60 hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none"
                 >
                   <PlusIcon className="size-5" />
                   Add channel

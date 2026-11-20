@@ -348,7 +348,7 @@ export function ShortcutsSheet() {
   const list = useStore(shortcuts, (s) => s);
   return (
     <Sheet open={open} onOpenChange={(o) => (o ? openShortcuts() : closeShortcuts())}>
-      <SheetContent side="right" className="w-[420px] gap-0 p-0 sm:max-w-[420px]" onOpenAutoFocus={(e) => e.preventDefault()}>
+      <SheetContent side="right" className="w-105 gap-0 p-0 sm:max-w-105" onOpenAutoFocus={(e) => e.preventDefault()}>
         <SheetHeader className="border-b">
           <SheetTitle>Shortcuts</SheetTitle>
           <SheetDescription>

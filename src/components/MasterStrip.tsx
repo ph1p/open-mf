@@ -12,7 +12,7 @@ export function MasterStrip({ mixer, bus }: { mixer: Mixer; bus: number }) {
   return (
     <section
       aria-label="Mix level"
-      className="relative flex w-[100px] shrink-0 flex-col items-center gap-2 rounded-md border bg-card px-2 pt-0 pb-2"
+      className="relative flex w-25 shrink-0 flex-col items-center gap-2 rounded-md border bg-card px-2 pt-0 pb-2"
     >
       <span className="absolute inset-x-2 top-0 h-0.5 rounded-b bg-primary" aria-hidden="true" />
       <Hint text="Meters show the mix after this level">

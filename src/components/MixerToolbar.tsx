@@ -21,7 +21,7 @@ function MiniMeters({ mixer, bus }: { mixer: Mixer; bus: number }) {
   return (
     <span className="flex h-4 gap-px" aria-hidden="true">
       {([0, 1] as const).map((side) => (
-        <Meter key={side} select={(v) => busMeter(mixer, v, bus, side)} label="" className="h-full w-[3px]" />
+        <Meter key={side} select={(v) => busMeter(mixer, v, bus, side)} label="" className="h-full w-0.75" />
       ))}
     </span>
   );
@@ -83,7 +83,7 @@ export function MixerToolbar({ mixer, bus, missing }: { mixer: Mixer; bus: numbe
                     <MiniMeters mixer={mixer} bus={i} />
                     {m.name}
                   </span>
-                  <span className="pl-[15px] text-[12px] group-aria-selected/tab:font-medium group-aria-selected/tab:text-primary">
+                  <span className="pl-3.75 text-[12px] group-aria-selected/tab:font-medium group-aria-selected/tab:text-primary">
                     {m.tag}
                   </span>
                   {/* Underline marks the mix being edited, readable without color alone. Styled via

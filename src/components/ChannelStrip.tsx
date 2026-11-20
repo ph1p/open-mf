@@ -49,7 +49,7 @@ export function ChannelStrip({
       onPointerDownCapture={() => setFocusUnit(u.key)}
       className={cn(
         "group/strip relative flex shrink-0 flex-col items-center gap-2 rounded-md border bg-card px-2 pt-0 pb-2 transition",
-        pair ? "w-[136px]" : "w-[96px]",
+        pair ? "w-34" : "w-24",
         focused ? "border-ring/60" : "border-border",
       )}
     >
