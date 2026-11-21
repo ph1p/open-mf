@@ -146,8 +146,10 @@ export function TitleBar({ sidebarToggle }: { sidebarToggle?: ReactNode }) {
     <header
       data-tauri-drag-region
       className={cn(
-        "relative z-10 flex h-10 shrink-0 items-center gap-2 border-b bg-card",
-        OS === "mac" ? "pl-21" : "pl-3",
+        // px, not spacing units: root font-size is 14px, so rem-based classes shrink and
+        // stop matching the native traffic lights (centred at y≈20, ending at x≈80).
+        "relative z-10 flex h-[40px] shrink-0 items-center gap-2 border-b bg-card",
+        OS === "mac" ? "pl-[92px]" : "pl-3",
         OS === "windows" ? "pr-0" : "pr-2",
       )}
     >
