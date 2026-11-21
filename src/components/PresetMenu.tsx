@@ -52,6 +52,8 @@ export function PresetMenu() {
             openSave.current = false;
           }}
         >
+          {/* Presets scroll on their own so "Save current as…" stays in reach. px: root font-size is 14px. */}
+          <div className="-mx-1 max-h-[360px] overflow-y-auto px-1">
           <DropdownMenuLabel className="text-[12px] text-muted-foreground">Built in</DropdownMenuLabel>
           {builtins.map(({ p, data }) => (
             <DropdownMenuItem key={p.id} onSelect={() => void applyPreset(p.name, data)} className="items-start gap-2">
@@ -92,6 +94,7 @@ export function PresetMenu() {
               ))}
             </>
           )}
+          </div>
           <DropdownMenuSeparator />
           <DropdownMenuItem
             onSelect={() => {
