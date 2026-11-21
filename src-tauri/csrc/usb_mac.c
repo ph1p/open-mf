@@ -33,7 +33,7 @@ static int fp_open(uint16_t vid, uint16_t pid) {
   CFDictionarySetValue(m, CFSTR("idProduct"), np);
   CFRelease(nv);
   CFRelease(np);
-  io_service_t svc = IOServiceGetMatchingService(kIOMainPortDefault, m); // consumes m
+  io_service_t svc = IOServiceGetMatchingService(MACH_PORT_NULL, m); // NULL = default main port; consumes m
   if (!svc) return FP_NOT_FOUND;
   IOCFPlugInInterface **plug = NULL;
   SInt32 score;
