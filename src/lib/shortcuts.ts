@@ -1,10 +1,9 @@
 import { invoke } from "@tauri-apps/api/core";
 import { listen } from "@tauri-apps/api/event";
-import { getCurrentWindow } from "@tauri-apps/api/window";
 import { register, unregisterAll } from "@tauri-apps/plugin-global-shortcut";
 import { toast } from "sonner";
 import {
-  app, applyPreset, flip, follow, setMute, nudge, redo, setBus, setLevel, toggleSwitch, undo, unitName, unitOf, unitsOf, type LevelTarget,
+  app, applyPreset, flip, follow, setFlag, nudge, redo, setBus, setLevel, toggleSwitch, undo, unitName, unitOf, unitsOf, type LevelTarget,
 } from "./app";
 import { CHANNELS, MIXES, fmtDb, type Control } from "./device";
 import { OS } from "./platform";
@@ -486,12 +485,8 @@ async function runSystem(verb: Verb, amount: number | null) {
   note(`Computer volume ${Math.round(v * 100)}%`);
 }
 
-async function showWindow() {
-  const w = getCurrentWindow();
-  await w.unminimize().catch(() => {});
-  await w.show().catch(() => {});
-  await w.setFocus().catch(() => {});
-}
+/** One "bring to front" path, shared with the A button (`show_main` in lib.rs). */
+const showWindow = () => invoke("show_window").catch(() => {});
 
 let firedTimer: ReturnType<typeof setTimeout> | undefined;
 function fired(id: string) {
@@ -540,7 +535,7 @@ async function runShortcut(sc: Shortcut) {
       else if (verb === "follow") return;
       else if (verb === "set") setLevel(s, amount);
       else if (s.kind === "level" && (verb === "mute" || verb === "solo")) flip(unitOf(s.chs), verb, s.bus);
-      else if (s.kind === "level" && (verb === "muteOn" || verb === "unmute")) setMute(unitOf(s.chs), verb === "muteOn", s.bus);
+      else if (s.kind === "level" && (verb === "muteOn" || verb === "unmute")) setFlag(unitOf(s.chs), "mute", verb === "muteOn", s.bus);
       return;
     }
     case "switch": {

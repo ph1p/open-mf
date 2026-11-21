@@ -78,6 +78,11 @@ fn model_of(pid: u16) -> Model {
     MODELS.iter().find(|(p, _)| *p == pid).map_or(Model::MiniFuse4, |(_, m)| *m)
 }
 
+/// The model already detected, without probing USB. None until `model()` found one.
+pub fn current_model() -> Option<Model> {
+    lock_current().map(model_of)
+}
+
 /// The attached MiniFuse. Probes every known product id until one answers.
 pub fn model() -> Result<Model, UsbError> {
     if let Some(pid) = *lock_current() {

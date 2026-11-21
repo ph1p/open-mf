@@ -143,6 +143,19 @@ fn media_keys_trusted(prompt: bool) -> bool {
 }
 
 /// Starts listening to MIDI inputs. Returns the connected ones so far.
+/// Brings the main window forward: the A button and the "Show Open MF" shortcut.
+pub(crate) fn show_main(app: &tauri::AppHandle) {
+    let Some(window) = app.get_webview_window("main") else { return };
+    let _ = window.unminimize();
+    let _ = window.show();
+    let _ = window.set_focus();
+}
+
+#[tauri::command]
+fn show_window(app: tauri::AppHandle) {
+    show_main(&app);
+}
+
 #[tauri::command]
 fn midi_start(app: tauri::AppHandle) -> Vec<String> {
     #[cfg(desktop)]
@@ -210,7 +223,8 @@ pub fn run() {
             set_app_volume,
             media_keys_set,
             media_keys_trusted,
-            midi_start
+            midi_start,
+            show_window
         ])
         .build(tauri::generate_context!())
         .expect("error while running tauri application")

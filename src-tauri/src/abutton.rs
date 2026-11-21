@@ -7,14 +7,16 @@
 use std::thread;
 use std::time::Duration;
 
-use tauri::{AppHandle, Manager};
+use tauri::AppHandle;
 
 use crate::device;
 
 const P_A_BUTTON: u8 = 7;
-/// Fast enough for a quick double press (presses ~160 ms apart were seen).
-const POLL: Duration = Duration::from_millis(100);
-/// Without a MiniFuse 4 there is nothing to watch; look again now and then.
+/// Any change brings the window forward, so presses merged between polls don't matter;
+/// only exactly 10 presses between two reads would go unseen.
+const POLL: Duration = Duration::from_millis(250);
+/// Without a MiniFuse 4 there is nothing to watch; look again now and then. Detection is
+/// left to the status poll, so this only reads the cached model and never probes USB.
 const IDLE: Duration = Duration::from_secs(1);
 
 pub fn init(app: AppHandle) {
@@ -22,24 +24,18 @@ pub fn init(app: AppHandle) {
         // (connection, counter). A new connection starts fresh, so replugging is no press.
         let mut last: Option<(u32, u16)> = None;
         loop {
-            let read = device::model()
-                .ok()
+            let read = device::current_model()
                 .filter(|m| m.has_mixer())
                 .and_then(|_| device::read_param(P_A_BUTTON, 0).ok())
                 .map(|v| (device::connection(), v));
-            match (last, read) {
-                (Some((conn, prev)), Some((now_conn, v))) if conn == now_conn && prev != v => bring_to_front(&app),
-                _ => {}
+            if let (Some((conn, prev)), Some((now_conn, v))) = (last, read)
+                && conn == now_conn
+                && prev != v
+            {
+                crate::show_main(&app);
             }
             last = read;
             thread::sleep(if read.is_some() { POLL } else { IDLE });
         }
     });
-}
-
-fn bring_to_front(app: &AppHandle) {
-    let Some(window) = app.get_webview_window("main") else { return };
-    let _ = window.unminimize();
-    let _ = window.show();
-    let _ = window.set_focus();
 }
