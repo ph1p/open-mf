@@ -1,3 +1,4 @@
+mod abutton;
 mod device;
 mod mediakeys;
 #[cfg(desktop)]
@@ -182,6 +183,7 @@ pub fn run() {
     builder
         .setup(|app| {
             mediakeys::init(app.handle().clone());
+            abutton::init(app.handle().clone());
             if let Some(window) = app.get_webview_window("main") {
                 winstate::init(&window);
             }
