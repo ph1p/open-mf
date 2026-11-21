@@ -431,11 +431,15 @@ export function setTrimDefault(i: number) {
   setDefault([trimKey(i)], db, `Trim ${i + 3} ${fmtDb(db)}`);
 }
 
+/** Sets mute or solo on every channel of a unit. No undo step when nothing changes. */
+export function setFlag(u: Unit, what: "mute" | "solo", on: boolean, b = busOf()) {
+  if (u.chs.every((ch) => strip(b, ch)[what] === on)) return;
+  const done = what === "mute" ? "muted" : "soloed";
+  record(`${on ? done[0].toUpperCase() + done.slice(1) : `Un${done}`} ${nameOf(u)}`, () => writeFlag(b, u.chs, what, on));
+}
+
 export function flip(u: Unit, what: "mute" | "solo", b = busOf()) {
-  const on = !u.chs.every((ch) => strip(b, ch)[what]);
-  record(`${on ? "" : "Un"}${what === "mute" ? (on ? "Muted" : "muted") : on ? "Soloed" : "soloed"} ${nameOf(u)}`, () =>
-    writeFlag(b, u.chs, what, on),
-  );
+  setFlag(u, what, !u.chs.every((ch) => strip(b, ch)[what]), b);
 }
 
 const ALL = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9];

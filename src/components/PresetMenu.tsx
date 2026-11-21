@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { CheckIcon, ChevronDownIcon, PlusIcon, Trash2Icon } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
@@ -17,6 +17,7 @@ export function PresetMenu() {
   const userPresets = useStore(app, (s) => s.userPresets);
   const [saving, setSaving] = useState(false);
   const [name, setName] = useState("");
+  const openSave = useRef(false);
   if (!mixer) return null;
 
   const builtins = BUILTIN_PRESETS.map((p) => ({ p, data: p.build() }));
@@ -42,7 +43,17 @@ export function PresetMenu() {
             </Button>
           </DropdownMenuTrigger>
         </PopoverAnchor>
-        <DropdownMenuContent align="start" className="w-80">
+        <DropdownMenuContent
+          align="start"
+          className="w-80"
+          onCloseAutoFocus={(e) => {
+            // Focus going back to the trigger counts as "outside" for the name popover and closes it at once.
+            if (openSave.current) e.preventDefault();
+            openSave.current = false;
+          }}
+        >
+          {/* Presets scroll on their own so "Save current as…" stays in reach. px: root font-size is 14px. */}
+          <div className="-mx-1 max-h-[360px] overflow-y-auto px-1">
           <DropdownMenuLabel className="text-[12px] text-muted-foreground">Built in</DropdownMenuLabel>
           {builtins.map(({ p, data }) => (
             <DropdownMenuItem key={p.id} onSelect={() => void applyPreset(p.name, data)} className="items-start gap-2">
@@ -83,8 +94,15 @@ export function PresetMenu() {
               ))}
             </>
           )}
+          </div>
           <DropdownMenuSeparator />
-          <DropdownMenuItem onSelect={() => setSaving(true)} className="gap-2 text-[14px]">
+          <DropdownMenuItem
+            onSelect={() => {
+              openSave.current = true;
+              setSaving(true);
+            }}
+            className="gap-2 text-[14px]"
+          >
             <PlusIcon className="size-3.5" />
             Save current as…
           </DropdownMenuItem>

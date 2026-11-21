@@ -213,7 +213,7 @@ function AddForm() {
         <SelectTrigger size="sm" className="w-full text-[13px]" aria-label="Control">
           <SelectValue />
         </SelectTrigger>
-        <SelectContent className="max-h-80">
+        <SelectContent position="popper" className="max-h-80">
           {!known && (
             <SelectItem value={key} className="text-[13px]">
               {subjectLabel(subject)}

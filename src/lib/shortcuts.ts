@@ -1,10 +1,9 @@
 import { invoke } from "@tauri-apps/api/core";
 import { listen } from "@tauri-apps/api/event";
-import { getCurrentWindow } from "@tauri-apps/api/window";
 import { register, unregisterAll } from "@tauri-apps/plugin-global-shortcut";
 import { toast } from "sonner";
 import {
-  app, applyPreset, flip, follow, nudge, redo, setBus, setLevel, toggleSwitch, undo, unitName, unitOf, unitsOf, type LevelTarget,
+  app, applyPreset, flip, follow, setFlag, nudge, redo, setBus, setLevel, toggleSwitch, undo, unitName, unitOf, unitsOf, type LevelTarget,
 } from "./app";
 import { CHANNELS, MIXES, fmtDb, type Control } from "./device";
 import { OS } from "./platform";
@@ -26,7 +25,7 @@ export type Subject =
   | { kind: "app" };
 
 export type Verb =
-  | "up" | "down" | "set" | "follow" | "mute" | "solo" | "toggle" | "apply" | "show" | "undo" | "redo";
+  | "up" | "down" | "set" | "follow" | "mute" | "muteOn" | "unmute" | "solo" | "toggle" | "apply" | "show" | "undo" | "redo";
 
 /** A MIDI control. Matches on any connected port. */
 export type Midi = { type: "note" | "cc" | "pc" | "pb"; ch: number; num: number };
@@ -44,13 +43,13 @@ export type Shortcut = {
 };
 
 export const VERBS: Record<Subject["kind"], Verb[]> = {
-  level: ["up", "down", "set", "follow", "mute", "solo"],
+  level: ["up", "down", "set", "follow", "mute", "muteOn", "unmute", "solo"],
   master: ["up", "down", "set", "follow"],
   trim: ["up", "down", "set", "follow"],
   switch: ["toggle"],
   preset: ["apply"],
   mix: ["show"],
-  system: ["up", "down", "follow", "mute"],
+  system: ["up", "down", "follow", "mute", "muteOn", "unmute"],
   app: ["show", "undo", "redo"],
 };
 
@@ -120,6 +119,10 @@ export function verbLabel(s: Subject, verb: Verb, amount: number | null): string
       return "Follows a MIDI knob or fader";
     case "mute":
       return "Mute / unmute";
+    case "muteOn":
+      return "Mute";
+    case "unmute":
+      return "Unmute";
     case "solo":
       return "Solo / unsolo";
     case "toggle":
@@ -470,10 +473,11 @@ async function freshSystemAudio(): Promise<SystemAudio | null> {
 
 async function runSystem(verb: Verb, amount: number | null) {
   const s = await freshSystemAudio();
-  if (verb === "mute") {
+  if (verb === "mute" || verb === "muteOn" || verb === "unmute") {
     if (s?.muted == null) return note("The computer can't mute the MiniFuse");
-    await setSystemMute(!s.muted);
-    return note(s.muted ? "Computer sound on" : "Computer sound muted");
+    const on = verb === "mute" ? !s.muted : verb === "muteOn";
+    if (on !== s.muted) await setSystemMute(on);
+    return note(on ? "Computer sound muted" : "Computer sound on");
   }
   if (s?.volume == null) return note("The computer has no volume for the MiniFuse");
   const v = Math.max(0, Math.min(1, Math.round((s.volume + ((verb === "up" ? 1 : -1) * (amount ?? 5)) / 100) * 100) / 100));
@@ -481,12 +485,8 @@ async function runSystem(verb: Verb, amount: number | null) {
   note(`Computer volume ${Math.round(v * 100)}%`);
 }
 
-async function showWindow() {
-  const w = getCurrentWindow();
-  await w.unminimize().catch(() => {});
-  await w.show().catch(() => {});
-  await w.setFocus().catch(() => {});
-}
+/** One "bring to front" path, shared with the A button (`show_main` in lib.rs). */
+const showWindow = () => invoke("show_window").catch(() => {});
 
 let firedTimer: ReturnType<typeof setTimeout> | undefined;
 function fired(id: string) {
@@ -535,6 +535,7 @@ async function runShortcut(sc: Shortcut) {
       else if (verb === "follow") return;
       else if (verb === "set") setLevel(s, amount);
       else if (s.kind === "level" && (verb === "mute" || verb === "solo")) flip(unitOf(s.chs), verb, s.bus);
+      else if (s.kind === "level" && (verb === "muteOn" || verb === "unmute")) setFlag(unitOf(s.chs), "mute", verb === "muteOn", s.bus);
       return;
     }
     case "switch": {
