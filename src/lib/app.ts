@@ -437,6 +437,11 @@ export function flip(u: Unit, what: "mute" | "solo", b = busOf()) {
     writeFlag(b, u.chs, what, on),
   );
 }
+/** Mute or unmute a unit outright. No undo step when nothing changes. */
+export function setMute(u: Unit, on: boolean, b = busOf()) {
+  if (u.chs.every((ch) => strip(b, ch).mute === on)) return;
+  record(`${on ? "Muted" : "Unmuted"} ${nameOf(u)}`, () => writeFlag(b, u.chs, "mute", on));
+}
 
 const ALL = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9];
 export function clearSolo() {
