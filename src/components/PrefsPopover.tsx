@@ -1,4 +1,7 @@
+import { invoke } from "@tauri-apps/api/core";
 import { SlidersHorizontalIcon, SunIcon } from "lucide-react";
+import { useEffect, useState } from "react";
+import { toast } from "sonner";
 import { Hint } from "@/components/Hint";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
@@ -8,6 +11,7 @@ import { Switch } from "@/components/ui/switch";
 import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
 import { app, setLed } from "@/lib/app";
 import { LED_LEVELS } from "@/lib/device";
+import { OS } from "@/lib/platform";
 import { checkForUpdates, updater } from "@/lib/updater";
 import { CLIP_OPTIONS, PEAK_OPTIONS, WARN_OPTIONS, settings, updateSettings } from "@/lib/settings";
 import { useStore } from "@/lib/store";
@@ -50,6 +54,33 @@ function About() {
           Check for updates
         </Button>
       </div>
+    </>
+  );
+}
+
+/** Login agent that opens Open MF from the A button while the app is closed (macOS). */
+function AButtonAgent() {
+  const [on, setOn] = useState<boolean | null>(null);
+  useEffect(() => {
+    invoke<boolean>("abutton_agent").then(setOn, () => setOn(false));
+  }, []);
+  const toggle = (next: boolean) => {
+    setOn(next);
+    invoke("set_abutton_agent", { enabled: next }).catch((err) => {
+      setOn(!next);
+      toast.error(String(err));
+    });
+  };
+  return (
+    <>
+      <span className={`mt-1 ${group}`}>A button</span>
+      <label className="flex items-center gap-3">
+        <span className="min-w-0 flex-1">
+          <span className="block text-[14px]">Open Open MF when closed</span>
+          <span className="block text-[12px] text-muted-foreground">A small helper starts at login and listens</span>
+        </span>
+        <Switch checked={on ?? false} disabled={on === null} onCheckedChange={toggle} />
+      </label>
     </>
   );
 }
@@ -114,6 +145,7 @@ export function PrefsPopover() {
           </span>
           <Switch checked={s.pairs} onCheckedChange={(pairs) => updateSettings({ pairs })} />
         </label>
+        {OS === "mac" && <AButtonAgent />}
       </PopoverContent>
     </Popover>
   );

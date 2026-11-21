@@ -1,4 +1,6 @@
 mod abutton;
+#[cfg(target_os = "macos")]
+mod agent;
 mod device;
 mod mediakeys;
 #[cfg(desktop)]
@@ -156,6 +158,26 @@ fn show_window(app: tauri::AppHandle) {
     show_main(&app);
 }
 
+/// Whether the login agent that opens Open MF from the A button is registered.
+#[tauri::command]
+fn abutton_agent() -> bool {
+    #[cfg(target_os = "macos")]
+    return agent::enabled();
+    #[cfg(not(target_os = "macos"))]
+    false
+}
+
+#[tauri::command]
+fn set_abutton_agent(enabled: bool) -> Result<(), String> {
+    #[cfg(target_os = "macos")]
+    return agent::set_enabled(enabled);
+    #[cfg(not(target_os = "macos"))]
+    {
+        let _ = enabled;
+        Err("Only available on macOS".into())
+    }
+}
+
 #[tauri::command]
 fn midi_start(app: tauri::AppHandle) -> Vec<String> {
     #[cfg(desktop)]
@@ -185,6 +207,15 @@ fn add_update_menu(app: &tauri::App) -> tauri::Result<()> {
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
+    #[cfg(target_os = "macos")]
+    if std::env::args().any(|a| a == agent::FLAG) {
+        agent::run();
+    }
+    #[cfg(target_os = "macos")]
+    {
+        agent::hold_app_lock();
+        agent::refresh();
+    }
     let builder = tauri::Builder::default();
     // User-defined shortcuts that work while another app is in front.
     #[cfg(desktop)]
@@ -224,7 +255,9 @@ pub fn run() {
             media_keys_set,
             media_keys_trusted,
             midi_start,
-            show_window
+            show_window,
+            abutton_agent,
+            set_abutton_agent
         ])
         .build(tauri::generate_context!())
         .expect("error while running tauri application")
